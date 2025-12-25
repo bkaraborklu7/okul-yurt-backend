@@ -2,21 +2,20 @@ const express = require('express');
 const cors = require('cors');
 const fs = require('fs'); // Dosya okuma/yazma modülü
 const nodemailer = require('nodemailer');
-
-// --- MAİL AYARLARI (HOTMAIL - IPv4 ZORLAMALI) ---
+// --- MAİL AYARLARI (HOTMAIL - Service Modu) ---
 const transporter = nodemailer.createTransport({
-    host: "smtp-mail.outlook.com", // office365 yerine bunu kullanıyoruz
-    port: 587,
-    secure: false, 
+    service: "hotmail", // Host/Port yerine direkt servis adı
     auth: {
-        user: "deneme3169311@hotmail.com", // Mail adresiniz
-        pass: "beratk3838"                 // Şifreniz
+        user: "deneme3169311@hotmail.com",
+        pass: "beratk3838"
     },
+    // Bağlantı hemen kopmasın diye süreleri uzatıyoruz
+    connectionTimeout: 10000, // 10 saniye bekle
+    greetingTimeout: 10000,   // Sunucu selamını 10 saniye bekle
+    socketTimeout: 10000,     // Veri akışını bekle
     tls: {
-        ciphers: 'SSLv3',
         rejectUnauthorized: false
-    },
-    family: 4 // <--- İŞTE ÇÖZÜM BU! (Sadece IPv4 kullan)
+    }
 });
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -431,6 +430,7 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Sunucu Hazır: http://localhost:${PORT}`);
 
 });
+
 
 
 
