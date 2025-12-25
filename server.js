@@ -14,7 +14,7 @@ const DOSYA_ADI = 'veriler.json';
 let veritabani = {
     hareketler: [],
     izinTalepleri: [],
-    izinliNumaralar[]
+    izinliNumaralar: []
 };
 
 // --- YARDIMCI FONKSİYONLAR ---
@@ -396,5 +396,6 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Sunucu Hazır: http://localhost:${PORT}`);
 
 });
+
 
 
