@@ -143,51 +143,95 @@ app.post('/sifre-sifirla', (req, res) => {
 
 // --- TURNİKE ---
 app.post('/yoklama', (req, res) => {
-    const { ogrenciId, kapiKodu } = req.body;
-    const ogrenci = veritabani.ogrenciler.find(o => o.id == ogrenciId);
-    if (kapiKodu.startsWith("ETUT_")) {
+    // 1. CASUS: Telefondan ne geliyor görelim
+    console.log("📡 YOKLAMA İSTEĞİ GELDİ:", req.body);
+
+    // DİKKAT: Mobil uygulama 'ogrenciNo' mu gönderiyor 'ogrenciId' mi?
+    // Garanti olsun diye ikisini de kontrol edelim:
+    const ogrenciId = req.body.ogrenciId || req.body.ogrenciNo;
+    const kapiKodu = req.body.kapiKodu;
+
+    // Öğrenciyi bul (Hem string hem sayı hatası olmasın diye == kullanıyoruz)
+    const ogrenci = veritabani.ogrenciler.find(o => o.id == ogrenciId || o.ogrenciNo == ogrenciId);
+
+    // Öğrenci yoksa hemen dur
+    if (!ogrenci) {
+        console.log("❌ HATA: Öğrenci veritabanında bulunamadı! Aranan ID:", ogrenciId);
+        return res.status(404).json({ basarili: false, mesaj: "Öğrenci bulunamadı" });
+    }
+
+    console.log(`👤 Öğrenci: ${ogrenci.ad}, Mevcut Durum: ${ogrenci.durum}, Gelen QR: ${kapiKodu}`);
+
+    // --- A) ETÜT KONTROLÜ ---
+    if (kapiKodu && kapiKodu.startsWith("ETUT_")) {
         if (ogrenci.etutDurumu === "VAR") {
+            console.log("ℹ️ Zaten etütte.");
             return res.json({ basarili: true, mesaj: "✅ Zaten etüt listesindesin.", yeniDurum: ogrenci.durum });
         }
-        ogrenci.etutDurumu = "VAR"; // Durumu güncelle
-        verileriKaydet(); // Dosyaya yaz
+        ogrenci.etutDurumu = "VAR";
+        verileriKaydet();
+        console.log("📚 Etüt var yazıldı.");
         return res.json({ basarili: true, mesaj: "📚 Etüt Yoklaması Alındı!", yeniDurum: ogrenci.durum });
     }
-    else if (!kapiKodu.startsWith("YURT_")) return res.status(400).json({ mesaj: "Geçersiz QR!" });
+    // --- QR KOD HATALIYSA ---
+    else if (!kapiKodu || !kapiKodu.startsWith("YURT_")) {
+        console.log("⚠️ Geçersiz QR Kodu:", kapiKodu);
+        return res.status(400).json({ mesaj: "Geçersiz QR! Lütfen YURT QR'ını okutun." });
+    }
 
-    if (ogrenci) {
-        // Spam Koruması (2 sn)
-        const sonIslem = veritabani.hareketler.findLast(h => h.ogrenciId == ogrenciId);
-        if (sonIslem && (Date.now() - sonIslem.timestamp < 2000)) {
-            return res.json({ basarili: true, mesaj: "⏳ Çok hızlı...", yeniDurum: ogrenci.durum });
-        }
+    // --- B) SPAM KORUMASI ---
+    const sonIslem = veritabani.hareketler ? veritabani.hareketler.find(h => h.ogrenciId == ogrenci.id || h.isim == ogrenci.ad) : null;
+    
+    // Not: findLast bazen eski node sürümlerinde çalışmaz, o yüzden garanti olsun diye array'i ters çevirip bakmak daha güvenli olabilir ama şimdilik senin kodunu korudum.
+    // timestamp kontrolü:
+    if (sonIslem && sonIslem.timestamp && (Date.now() - sonIslem.timestamp < 3000)) {
+        console.log("⏳ Spam koruması devrede.");
+        return res.json({ basarili: true, mesaj: "⏳ Çok hızlı okuttun, sakin ol...", yeniDurum: ogrenci.durum });
+    }
 
-        let yeniDurum = "", mesaj = "";
+    // --- C) DURUM MANTIĞI ---
+    let yeniDurum = "";
+    let mesaj = "";
 
-        // Durum Mantığı
-        if (ogrenci.durum === "YURTTA") {
-            const izin = veritabani.izinTalepleri.find(t => t.ogrenciId == ogrenci.id && t.durum === "ONAYLANDI");
-            if (izin) {
-                yeniDurum = "IZINLI"; mesaj = "👋 İzinli Çıkış";
-                izin.durum = "KULLANILDI";
-            } else {
-                yeniDurum = "DISARIDA"; mesaj = "👋 Güle Güle";
-            }
+    // Senaryo 1: Öğrenci zaten YURTTA ise -> Çıkış yapacak (veya izinli çıkacak)
+    if (ogrenci.durum === "YURTTA") {
+        // İzin talebi var mı?
+        const izin = veritabani.izinTalepleri ? veritabani.izinTalepleri.find(t => (t.ogrenciId == ogrenci.id || t.isim == ogrenci.ad) && t.durum === "ONAYLANDI") : null;
+        
+        if (izin) {
+            yeniDurum = "IZINLI";
+            mesaj = "👋 İzinli Çıkış";
+            izin.durum = "KULLANILDI"; // İzni düş
+            console.log("✅ İzinli çıkış yaptı.");
         } else {
-            yeniDurum = "YURTTA";
-            mesaj = ogrenci.durum === "IZINLI" ? "👋 İzin Dönüşü" : "👋 Hoşgeldin";
+            yeniDurum = "DISARIDA";
+            mesaj = "👋 Güle Güle";
+            console.log("🚪 Normal çıkış yaptı.");
         }
+    } 
+    // Senaryo 2: Öğrenci DIŞARIDA veya İZİNLİ ise -> Yurda girecek
+    else {
+        yeniDurum = "YURTTA";
+        mesaj = (ogrenci.durum === "IZINLI") ? "👋 İzin Dönüşü Hoşgeldin" : "👋 Hoşgeldin";
+        console.log(`🏠 Yurda giriş yaptı. (Eski durum: ${ogrenci.durum})`);
+    }
 
-        ogrenci.durum = yeniDurum;
-        veritabani.hareketler.push({
-            ogrenciId: ogrenci.id, isim: ogrenci.ad, durum_yeni: yeniDurum,
-            zaman: new Date().toLocaleTimeString(), timestamp: Date.now()
-        });
+    // --- KAYIT VE BİTİŞ ---
+    ogrenci.durum = yeniDurum;
+    
+    if (!veritabani.hareketler) veritabani.hareketler = [];
+    veritabani.hareketler.unshift({ // push yerine unshift ile en başa ekleriz ki son hareket kolay bulunsun
+        ogrenciId: ogrenci.id, 
+        isim: ogrenci.ad, 
+        durum_yeni: yeniDurum,
+        zaman: new Date().toLocaleTimeString("tr-TR"), 
+        timestamp: Date.now()
+    });
 
-        verileriKaydet(); // 💾 DOSYAYA YAZ
-
-        res.json({ basarili: true, mesaj: mesaj, yeniDurum: yeniDurum });
-    } else { res.status(404).json({ basarili: false, mesaj: "Öğrenci yok" }); }
+    verileriKaydet();
+    
+    console.log("💾 Veri kaydedildi. İşlem tamam.");
+    res.json({ basarili: true, mesaj: mesaj, yeniDurum: yeniDurum });
 });
 
 // --- İZİN TALEBİ ---
@@ -280,3 +324,4 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Sunucu Hazır: http://localhost:${PORT}`);
 
 });
+
