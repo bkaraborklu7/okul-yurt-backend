@@ -3,19 +3,20 @@ const cors = require('cors');
 const fs = require('fs'); // Dosya okuma/yazma modülü
 const nodemailer = require('nodemailer');
 
-// --- MAİL AYARLARI (HOTMAIL / OUTLOOK) ---
+// --- MAİL AYARLARI (HOTMAIL - IPv4 ZORLAMALI) ---
 const transporter = nodemailer.createTransport({
-    host: "smtp.office365.com", // Microsoft sunucusu
-    port: 587,                  // Standart TLS portu
-    secure: false,              // 587 için false olmalı
+    host: "smtp-mail.outlook.com", // office365 yerine bunu kullanıyoruz
+    port: 587,
+    secure: false, 
     auth: {
-        user: "deneme3169311@hotmail.com", // Hotmail veya Outlook adresiniz
-        pass: "beratk3838"             // Normal giriş şifreniz
+        user: "deneme3169311@hotmail.com", // Mail adresiniz
+        pass: "beratk3838"                 // Şifreniz
     },
     tls: {
-        ciphers: 'SSLv3',          // Bağlantı uyumluluğu için
-        rejectUnauthorized: false  // Sertifika hatalarını yoksay
-    }
+        ciphers: 'SSLv3',
+        rejectUnauthorized: false
+    },
+    family: 4 // <--- İŞTE ÇÖZÜM BU! (Sadece IPv4 kullan)
 });
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -430,5 +431,6 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Sunucu Hazır: http://localhost:${PORT}`);
 
 });
+
 
 
