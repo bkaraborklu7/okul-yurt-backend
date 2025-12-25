@@ -11,7 +11,7 @@ const transporter = nodemailer.createTransport({
     auth: {
         user: 'srzttyb@gmail.com', // Kendi Gmail adresiniz
         pass: 'rkmj umiy gfmp owja'           // Google'dan aldığınız 16 haneli Uygulama Şifresi
-    }
+    },
     tls: {
         rejectUnauthorized: false // Sertifika hatalarını yoksay
     },
@@ -439,6 +439,7 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Sunucu Hazır: http://localhost:${PORT}`);
 
 });
+
 
 
 
