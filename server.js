@@ -12,13 +12,9 @@ const DOSYA_ADI = 'veriler.json';
 
 // Varsayılan Veriler (İlk kez çalıştırıldığında bu liste oluşacak)
 let veritabani = {
-    ogrenciler: [
-        { id: 1, ogrenciNo: "2024001", ad: "Ahmet Yılmaz", sinif: "11-A", oda: "101", durum: "DISARIDA", kayitliMi: false, sifre: null, email: null, tel: null },
-        { id: 2, ogrenciNo: "2024002", ad: "Mehmet Demir", sinif: "12-C", oda: "102", durum: "DISARIDA", kayitliMi: false, sifre: null, email: null, tel: null },
-        { id: 3, ogrenciNo: "2024003", ad: "Ayşe Kara", sinif: "10-B", oda: "205", durum: "IZINLI", kayitliMi: false, sifre: null, email: null, tel: null },
-    ],
     hareketler: [],
-    izinTalepleri: []
+    izinTalepleri: [],
+    izinliNumaralar[]
 };
 
 // --- YARDIMCI FONKSİYONLAR ---
@@ -29,6 +25,8 @@ function verileriYukle() {
         console.log("📂 Eski veriler bulundu, yükleniyor...");
         const dosyaIcerigi = fs.readFileSync(DOSYA_ADI, 'utf-8');
         veritabani = JSON.parse(dosyaIcerigi);
+        if (!veritabani.izinliNumaralar) veritabani.izinliNumaralar = [];
+        if (!veritabani.belletmenler) veritabani.belletmenler = [];
     } else {
         console.log("🆕 Veri dosyası yok, varsayılan liste oluşturuluyor...");
         verileriKaydet(); // Dosyayı oluştur
@@ -54,24 +52,56 @@ app.get('/izinliler', (req, res) => { res.json(veritabani.ogrenciler.filter(o =>
 app.get('/hareketler', (req, res) => { res.json([...veritabani.hareketler].reverse()); });
 app.get('/izin-talepleri', (req, res) => { res.json(veritabani.izinTalepleri.filter(t => t.durum === "BEKLIYOR")); });
 
-// --- KAYIT OLMA ---
+// --- GÜNCELLENMİŞ KAYIT OLMA ---
 app.post('/kayit-ol', (req, res) => {
-    const { ogrenciNo, sifre, email, tel } = req.body;
+    const { ogrenciNo, sifre, email, tel, ad, sinif, oda } = req.body; // Ad, sınıf vs. de formdan gelmeli artık
 
-    const ogrenci = veritabani.ogrenciler.find(o => o.ogrenciNo === ogrenciNo);
+    // 1. Önce zaten kayıtlı öğrenci listesinde var mı bakalım?
+    let ogrenci = veritabani.ogrenciler.find(o => o.ogrenciNo === ogrenciNo);
 
-    if (!ogrenci) return res.status(404).json({ basarili: false, mesaj: "❌ Öğrenci numarası bulunamadı!" });
-    if (ogrenci.kayitliMi) return res.status(400).json({ basarili: false, mesaj: "⚠️ Zaten kayıtlısınız." });
+    if (ogrenci) {
+        // Öğrenci listede var, ama zaten kayıt olmuş mu?
+        if (ogrenci.kayitliMi) {
+            return res.status(400).json({ basarili: false, mesaj: "⚠️ Zaten kayıtlısınız. Giriş yapın." });
+        }
+        // Listede var ama kaydı tamamlamamış (Eski yöntem devam eder)
+    } else {
+        // 2. Öğrenci ana listede YOK. Peki "İzinli Numaralar" listesinde var mı?
+        const izinliMi = veritabani.izinliNumaralar.find(n => n.numara === ogrenciNo);
 
-    // Bilgileri Güncelle
+        if (!izinliMi) {
+            return res.status(404).json({ basarili: false, mesaj: "❌ Bu numara ile kayıt yetkiniz yok! İdareden onay alın." });
+        }
+
+        // 3. İzinli listesinde bulundu! Yeni öğrenci kaydı oluşturuyoruz.
+        ogrenci = {
+            id: Date.now(), // Rastgele ID
+            ogrenciNo: ogrenciNo,
+            ad: ad || "Yeni Öğrenci", // Frontend'den isim gelmezse varsayılan
+            sinif: sinif || "-",
+            oda: oda || "-",
+            durum: "DISARIDA", // Varsayılan durum
+            kayitliMi: false, // Aşağıda true yapılacak
+            sifre: null,
+            email: null,
+            tel: null,
+            etutDurumu: "YOK"
+        };
+        
+        // Ana listeye ekle
+        veritabani.ogrenciler.push(ogrenci);
+    }
+
+    // Bilgileri Güncelle ve Kaydı Tamamla
     ogrenci.sifre = sifre;
     ogrenci.email = email;
     ogrenci.tel = tel;
+    if(ad) ogrenci.ad = ad; // İsim güncelleme şansı
     ogrenci.kayitliMi = true;
 
     verileriKaydet(); // 💾 DOSYAYA YAZ
 
-    console.log(`🆕 KAYIT: ${ogrenci.ad} sisteme eklendi.`);
+    console.log(`🆕 KAYIT: ${ogrenci.ad} sisteme başarıyla eklendi.`);
     res.json({ basarili: true, mesaj: "✅ Kayıt başarılı!" });
 });
 
@@ -320,8 +350,51 @@ app.post('/belletmen-guncelle', (req, res) => {
     }
 });
 
+// --- YENİ: İZİNLİ NUMARA YÖNETİMİ ---
+
+// 1. Listeyi Getir
+app.get('/izinli-numaralar', (req, res) => {
+    res.json(veritabani.izinliNumaralar);
+});
+
+// 2. Yeni Numara Ekle
+app.post('/izinli-numara-ekle', (req, res) => {
+    const { numara } = req.body;
+    
+    // Zaten kayıtlı mı kontrol et
+    const zatenVar = veritabani.izinliNumaralar.find(n => n.numara === numara);
+    if (zatenVar) return res.status(400).json({ basarili: false, mesaj: "Bu numara zaten listede." });
+
+    // Yeni kayıt oluştur
+    const yeniKayit = {
+        id: Date.now().toString(),
+        numara: numara,
+        eklenmeTarihi: new Date().toLocaleDateString()
+    };
+
+    veritabani.izinliNumaralar.push(yeniKayit);
+    verileriKaydet(); // Dosyayı güncelle
+    
+    res.json({ basarili: true, mesaj: "Numara eklendi.", data: yeniKayit });
+});
+
+// 3. Numara Sil
+app.delete('/izinli-numara-sil/:id', (req, res) => {
+    const { id } = req.params;
+    
+    const baslangicBoyut = veritabani.izinliNumaralar.length;
+    veritabani.izinliNumaralar = veritabani.izinliNumaralar.filter(n => n.id !== id);
+
+    if (veritabani.izinliNumaralar.length < baslangicBoyut) {
+        verileriKaydet();
+        res.json({ basarili: true, mesaj: "Numara silindi." });
+    } else {
+        res.status(404).json({ basarili: false, mesaj: "Numara bulunamadı." });
+    }
+});
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Sunucu Hazır: http://localhost:${PORT}`);
 
 });
+
 
