@@ -1,0 +1,140 @@
+{
+  "ogrenciler": [
+    {
+      "id": 1,
+      "ogrenciNo": "2024001",
+      "ad": "Ahmet Yılmaz",
+      "sinif": "11-A",
+      "oda": "101",
+      "durum": "IZINLI",
+      "kayitliMi": true,
+      "sifre": "1234",
+      "email": "brtkrbrkl7@gmail.com",
+      "tel": "5423946959",
+      "resetKodu": "4174",
+      "etutDurumu": "YOK"
+    },
+    {
+      "id": 2,
+      "ogrenciNo": "2024002",
+      "ad": "Mehmet Demir",
+      "sinif": "12-C",
+      "oda": "102",
+      "durum": "IZINLI",
+      "kayitliMi": true,
+      "sifre": "1234",
+      "email": "f",
+      "tel": "5",
+      "etutDurumu": "YOK"
+    },
+    {
+      "id": 3,
+      "ogrenciNo": "2024003",
+      "ad": "Ayşe Kara",
+      "sinif": "10-B",
+      "oda": "205",
+      "durum": "IZINLI",
+      "kayitliMi": false,
+      "sifre": null,
+      "email": null,
+      "tel": null,
+      "etutDurumu": "YOK"
+    }
+  ],
+  "hareketler": [
+    {
+      "ogrenciId": 1,
+      "isim": "Ahmet Yılmaz",
+      "durum_yeni": "YURTTA",
+      "zaman": "20:16:14",
+      "timestamp": 1766596575134
+    },
+    {
+      "ogrenciId": 1,
+      "isim": "Ahmet Yılmaz",
+      "durum_yeni": "IZINLI",
+      "zaman": "20:42:01",
+      "timestamp": 1766598121733
+    },
+    {
+      "ogrenciId": 2,
+      "isim": "Mehmet Demir",
+      "durum_yeni": "YURTTA",
+      "zaman": "20:52:54",
+      "timestamp": 1766598774137
+    },
+    {
+      "ogrenciId": 2,
+      "isim": "Mehmet Demir",
+      "durum_yeni": "IZINLI",
+      "zaman": "20:54:05",
+      "timestamp": 1766598845604
+    }
+  ],
+  "izinTalepleri": [
+    {
+      "id": 1766596548490,
+      "ogrenciId": 1,
+      "isim": "Ahmet Yılmaz",
+      "tur": "Çarşı",
+      "aciklama": "f",
+      "tarih": "25.12-25.12",
+      "durum": "KULLANILDI"
+    },
+    {
+      "id": 1766597513348,
+      "ogrenciId": 1,
+      "isim": "Ahmet Yılmaz",
+      "tur": "Çarşı",
+      "aciklama": "h",
+      "tarih": "25.12-27.12",
+      "durum": "KULLANILDI"
+    },
+    {
+      "id": 1766598815182,
+      "ogrenciId": 2,
+      "isim": "Mehmet Demir",
+      "tur": "Evci",
+      "aciklama": "evci",
+      "tarih": "25.12-27.12",
+      "durum": "KULLANILDI"
+    }
+  ],
+  "belletmenler": [
+    {
+      "gun": "Pazartesi",
+      "erkek": "",
+      "kiz": ""
+    },
+    {
+      "gun": "Salı",
+      "erkek": "",
+      "kiz": ""
+    },
+    {
+      "gun": "Çarşamba",
+      "erkek": "berat",
+      "kiz": ""
+    },
+    {
+      "gun": "Perşembe",
+      "erkek": "",
+      "kiz": ""
+    },
+    {
+      "gun": "Cuma",
+      "erkek": "ali",
+      "kiz": ""
+    },
+    {
+      "gun": "Cumartesi",
+      "erkek": "",
+      "kiz": ""
+    },
+    {
+      "gun": "Pazar",
+      "erkek": "",
+      "kiz": ""
+    }
+  ]
+}
