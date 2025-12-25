@@ -158,6 +158,7 @@ app.post('/sifre-kodu-gonder', async (req, res) => {
     // 3. Kodu kaydet
     kullanici.resetKodu = dogrulamaKodu;
     verileriKaydet();
+};
 
     // 4. MAİL GÖNDERME İŞLEMİ (GERÇEK)
 app.post('/sifre-kodu-gonder', async (req, res) => {
@@ -447,3 +448,4 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Sunucu Hazır: http://localhost:${PORT}`);
 
 });
+
