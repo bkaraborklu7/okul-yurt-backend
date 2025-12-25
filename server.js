@@ -6,7 +6,7 @@ const nodemailer = require('nodemailer');
 // --- MAİL GÖNDERİCİ AYARLARI ---
 const transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',
-    port: '465',
+    port: 465,
     secure: 'true',
     auth: {
         user: 'srzttyb@gmail.com', // Kendi Gmail adresiniz
