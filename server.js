@@ -4,18 +4,13 @@ const fs = require('fs'); // Dosya okuma/yazma modülü
 const nodemailer = require('nodemailer');
 
 // --- MAİL GÖNDERİCİ AYARLARI ---
+// --- MAİL AYARLARI (SADELEŞTİRİLMİŞ) ---
 const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 465,
-    secure: true,
+    service: 'gmail', // Host ve Port yazmıyoruz, otomatik seçsin
     auth: {
-        user: 'srzttyb@gmail.com', // Kendi Gmail adresiniz
-        pass: 'rkmj umiy gfmp owja'           // Google'dan aldığınız 16 haneli Uygulama Şifresi
-    },
-    tls: {
-        rejectUnauthorized: false // Sertifika hatalarını yoksay
-    },
-    family: 4
+        user: 'srzttyb@gmail.com', 
+        pass: 'rkmj umiy gfmp owja' // 16 haneli kod
+    }
 });
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -439,6 +434,7 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Sunucu Hazır: http://localhost:${PORT}`);
 
 });
+
 
 
 
