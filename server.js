@@ -142,24 +142,6 @@ app.post('/giris', (req, res) => {
         else res.status(401).json({ basarili: false, mesaj: "Hatalı bilgi!" });
     }
 });
-app.post('/sifre-kodu-gonder', async (req, res) => {
-    const { email } = req.body;
-
-    // 1. Bu maile sahip kayıtlı bir kullanıcı var mı?
-    const kullanici = veritabani.ogrenciler.find(o => o.email === email && o.kayitliMi === true);
-
-    if (!kullanici) {
-        return res.status(404).json({ basarili: false, mesaj: "❌ Bu e-posta adresiyle kayıtlı öğrenci bulunamadı!" });
-    }
-
-    // 2. Rastgele 4 haneli kod üret
-    const dogrulamaKodu = Math.floor(1000 + Math.random() * 9000).toString();
-
-    // 3. Kodu kaydet
-    kullanici.resetKodu = dogrulamaKodu;
-    verileriKaydet();
-};
-
     // 4. MAİL GÖNDERME İŞLEMİ (GERÇEK)
 app.post('/sifre-kodu-gonder', async (req, res) => {
     const { email } = req.body;
@@ -448,4 +430,5 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Sunucu Hazır: http://localhost:${PORT}`);
 
 });
+
 
