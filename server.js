@@ -54,55 +54,59 @@ app.get('/izin-talepleri', (req, res) => { res.json(veritabani.izinTalepleri.fil
 
 // --- GÜNCELLENMİŞ KAYIT OLMA ---
 app.post('/kayit-ol', (req, res) => {
-    const { ogrenciNo, sifre, email, tel, ad, sinif, oda } = req.body; // Ad, sınıf vs. de formdan gelmeli artık
+    // 1. Formdan sadece kayıt için gerekli bilgileri alıyoruz.
+    // (Ad, Sınıf, Oda bilgilerini istemiyoruz, onları biz bulacağız)
+    const { ogrenciNo, sifre, email, tel } = req.body; 
 
-    // 1. Önce zaten kayıtlı öğrenci listesinde var mı bakalım?
+    // 2. Önce bu öğrenci ana listede (veritabani.ogrenciler) var mı?
     let ogrenci = veritabani.ogrenciler.find(o => o.ogrenciNo === ogrenciNo);
 
     if (ogrenci) {
-        // Öğrenci listede var, ama zaten kayıt olmuş mu?
+        // Öğrenci listede zaten var, peki kaydını tamamlamış mı?
         if (ogrenci.kayitliMi) {
             return res.status(400).json({ basarili: false, mesaj: "⚠️ Zaten kayıtlısınız. Giriş yapın." });
         }
-        // Listede var ama kaydı tamamlamamış (Eski yöntem devam eder)
+        // Listede var ama kaydı yok (Eski usul eklenmiş olabilir), devam ediyoruz...
     } else {
-        // 2. Öğrenci ana listede YOK. Peki "İzinli Numaralar" listesinde var mı?
-        const izinliMi = veritabani.izinliNumaralar.find(n => n.numara === ogrenciNo);
+        // 3. Öğrenci ana listede YOK. O zaman "İzinli Numaralar" listesine bakacağız.
+        // Burada sadece numaraya değil, o numaranın detaylarına (izinliVeri) ulaşıyoruz.
+        const izinliVeri = veritabani.izinliNumaralar.find(n => n.numara === ogrenciNo);
 
-        if (!izinliMi) {
+        if (!izinliVeri) {
             return res.status(404).json({ basarili: false, mesaj: "❌ Bu numara ile kayıt yetkiniz yok! İdareden onay alın." });
         }
 
-        // 3. İzinli listesinde bulundu! Yeni öğrenci kaydı oluşturuyoruz.
+        // 4. İzinli listesinde bulduk! 
+        // Adminin girdiği Ad, Sınıf ve Oda bilgilerini buraya çekiyoruz.
         ogrenci = {
-            id: Date.now(), // Rastgele ID
+            id: Date.now(),
             ogrenciNo: ogrenciNo,
-            ad: ad || "Yeni Öğrenci", // Frontend'den isim gelmezse varsayılan
-            sinif: sinif || "-",
-            oda: oda || "-",
-            durum: "DISARIDA", // Varsayılan durum
-            kayitliMi: false, // Aşağıda true yapılacak
+            ad: izinliVeri.ad,              // <--- Adminin girdiği İSİM
+            sinif: izinliVeri.sinif || "-", // <--- Adminin girdiği SINIF
+            oda: izinliVeri.oda || "-",     // <--- Adminin girdiği ODA
+            durum: "DISARIDA",
+            kayitliMi: false,
             sifre: null,
             email: null,
             tel: null,
             etutDurumu: "YOK"
         };
         
-        // Ana listeye ekle
+        // Artık ana listeye ekleyebiliriz
         veritabani.ogrenciler.push(ogrenci);
     }
 
-    // Bilgileri Güncelle ve Kaydı Tamamla
+    // 5. Öğrencinin belirlediği şifre ve iletişim bilgilerini kaydediyoruz.
     ogrenci.sifre = sifre;
     ogrenci.email = email;
     ogrenci.tel = tel;
-    if(ad) ogrenci.ad = ad; // İsim güncelleme şansı
     ogrenci.kayitliMi = true;
 
     verileriKaydet(); // 💾 DOSYAYA YAZ
 
     console.log(`🆕 KAYIT: ${ogrenci.ad} sisteme başarıyla eklendi.`);
-    res.json({ basarili: true, mesaj: "✅ Kayıt başarılı!" });
+    // Mesajda öğrencinin ismini de gösterelim ki doğru kişi olduğunu anlasın
+    res.json({ basarili: true, mesaj: `✅ Kayıt başarılı! Hoşgeldin ${ogrenci.ad}` });
 });
 
 // --- GİRİŞ YAPMA ---
@@ -358,10 +362,14 @@ app.get('/izinli-numaralar', (req, res) => {
 });
 
 // 2. Yeni Numara Ekle
+// 2. Yeni İzinli Öğrenci Ekle (Detaylı)
 app.post('/izinli-numara-ekle', (req, res) => {
-    const { numara } = req.body;
+    // Frontend'den gelen verileri alıyoruz
+    const { numara, ad, sinif, oda } = req.body;
     
-    // Zaten kayıtlı mı kontrol et
+    if (!numara || !ad) return res.status(400).json({ basarili: false, mesaj: "Numara ve Ad-Soyad zorunludur!" });
+
+    // Zaten listede var mı?
     const zatenVar = veritabani.izinliNumaralar.find(n => n.numara === numara);
     if (zatenVar) return res.status(400).json({ basarili: false, mesaj: "Bu numara zaten listede." });
 
@@ -369,13 +377,16 @@ app.post('/izinli-numara-ekle', (req, res) => {
     const yeniKayit = {
         id: Date.now().toString(),
         numara: numara,
+        ad: ad,       // YENİ
+        sinif: sinif, // YENİ
+        oda: oda,     // YENİ
         eklenmeTarihi: new Date().toLocaleDateString()
     };
 
     veritabani.izinliNumaralar.push(yeniKayit);
     verileriKaydet(); // Dosyayı güncelle
     
-    res.json({ basarili: true, mesaj: "Numara eklendi.", data: yeniKayit });
+    res.json({ basarili: true, mesaj: "Öğrenci izin listesine eklendi.", data: yeniKayit });
 });
 
 // 3. Numara Sil
@@ -396,6 +407,7 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Sunucu Hazır: http://localhost:${PORT}`);
 
 });
+
 
 
 
