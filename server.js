@@ -3,13 +3,18 @@ const cors = require('cors');
 const fs = require('fs'); // Dosya okuma/yazma modülü
 const nodemailer = require('nodemailer');
 
-// --- MAİL GÖNDERİCİ AYARLARI ---
-// --- MAİL AYARLARI (SADELEŞTİRİLMİŞ) ---
+// --- MAİL AYARLARI (HOTMAIL / OUTLOOK) ---
 const transporter = nodemailer.createTransport({
-    service: 'gmail', // Host ve Port yazmıyoruz, otomatik seçsin
+    host: "smtp.office365.com", // Microsoft sunucusu
+    port: 587,                  // Standart TLS portu
+    secure: false,              // 587 için false olmalı
     auth: {
-        user: 'srzttyb@gmail.com', 
-        pass: 'rkmj umiy gfmp owja' // 16 haneli kod
+        user: "deneme3169311@hotmail.com", // Hotmail veya Outlook adresiniz
+        pass: "beratk3838"             // Normal giriş şifreniz
+    },
+    tls: {
+        ciphers: 'SSLv3',          // Bağlantı uyumluluğu için
+        rejectUnauthorized: false  // Sertifika hatalarını yoksay
     }
 });
 const app = express();
@@ -155,29 +160,37 @@ app.post('/sifre-kodu-gonder', async (req, res) => {
     verileriKaydet();
 
     // 4. MAİL GÖNDERME İŞLEMİ (GERÇEK)
+app.post('/sifre-kodu-gonder', async (req, res) => {
+    const { email } = req.body;
+
+    const kullanici = veritabani.ogrenciler.find(o => o.email === email && o.kayitliMi === true);
+
+    if (!kullanici) {
+        return res.status(404).json({ basarili: false, mesaj: "❌ Bu e-posta adresiyle kayıtlı öğrenci bulunamadı!" });
+    }
+
+    const dogrulamaKodu = Math.floor(1000 + Math.random() * 9000).toString();
+    kullanici.resetKodu = dogrulamaKodu;
+    verileriKaydet();
+
     const mailIcerigi = {
-        from: '"Yurt Yönetim Sistemi" <sizinmailadresiniz@gmail.com>', // Gönderen
-        to: email, // Alıcı (Öğrencinin maili)
+        from: '"Yurt Yönetim Sistemi" <seninmailin@hotmail.com>', // DİKKAT: Yukarıdakiyle AYNI maili yaz
+        to: email, 
         subject: '🔐 Şifre Sıfırlama Kodunuz',
-        text: `Merhaba ${kullanici.ad},\n\nŞifrenizi sıfırlamak için gereken kodunuz: ${dogrulamaKodu}\n\nBu kodu kimseyle paylaşmayın.`,
         html: `
             <h3>Merhaba ${kullanici.ad},</h3>
-            <p>Şifrenizi sıfırlamak için aşağıdaki kodu uygulamaya giriniz:</p>
-            <h1 style="color: #2c3e50; background: #ecf0f1; padding: 10px; display: inline-block;">${dogrulamaKodu}</h1>
-            <p>Bu işlemi siz yapmadıysanız lütfen idareye bildiriniz.</p>
+            <p>Şifre sıfırlama kodunuz:</p>
+            <h1>${dogrulamaKodu}</h1>
         `
     };
 
     try {
-        // Maili gönder
         await transporter.sendMail(mailIcerigi);
-        
-        console.log(`✅ Mail gönderildi: ${email} -> Kod: ${dogrulamaKodu}`);
-        res.json({ basarili: true, mesaj: "✅ Doğrulama kodu e-posta adresinize gönderildi." });
-        
+        console.log(`✅ Mail gönderildi: ${email}`);
+        res.json({ basarili: true, mesaj: "✅ Kod gönderildi." });
     } catch (error) {
-        console.error("Mail gönderme hatası:", error);
-        res.status(500).json({ basarili: false, mesaj: "❌ Mail gönderilemedi. Lütfen daha sonra tekrar deneyin." });
+        console.error("Mail Hatası:", error);
+        res.status(500).json({ basarili: false, mesaj: "Mail gönderilemedi." });
     }
 });
 // --- YENİ: ŞİFREYİ GÜNCELLEME ---
@@ -434,6 +447,7 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Sunucu Hazır: http://localhost:${PORT}`);
 
 });
+
 
 
 
