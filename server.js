@@ -5,7 +5,9 @@ const nodemailer = require('nodemailer');
 
 // --- MAİL GÖNDERİCİ AYARLARI ---
 const transporter = nodemailer.createTransport({
-    service: 'gmail',
+    host: 'smtp.gmail.com',
+    port: '465',
+    secure: 'true',
     auth: {
         user: 'srzttyb@gmail.com', // Kendi Gmail adresiniz
         pass: 'rkmj umiy gfmp owja'           // Google'dan aldığınız 16 haneli Uygulama Şifresi
@@ -433,6 +435,7 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Sunucu Hazır: http://localhost:${PORT}`);
 
 });
+
 
 
 
