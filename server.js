@@ -1,6 +1,16 @@
 const express = require('express');
 const cors = require('cors');
 const fs = require('fs'); // Dosya okuma/yazma modülü
+const nodemailer = require('nodemailer');
+
+// --- MAİL GÖNDERİCİ AYARLARI ---
+const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+        user: 'srzttyb@gmail.com', // Kendi Gmail adresiniz
+        pass: 'rkmj umiy gfmp owja'           // Google'dan aldığınız 16 haneli Uygulama Şifresi
+    }
+});
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -126,7 +136,7 @@ app.post('/giris', (req, res) => {
         else res.status(401).json({ basarili: false, mesaj: "Hatalı bilgi!" });
     }
 });
-app.post('/sifre-kodu-gonder', (req, res) => {
+app.post('/sifre-kodu-gonder', async (req, res) => {
     const { email } = req.body;
 
     // 1. Bu maile sahip kayıtlı bir kullanıcı var mı?
@@ -139,20 +149,36 @@ app.post('/sifre-kodu-gonder', (req, res) => {
     // 2. Rastgele 4 haneli kod üret
     const dogrulamaKodu = Math.floor(1000 + Math.random() * 9000).toString();
 
-    // 3. Kodu kullanıcının verisine geçici olarak kaydet
+    // 3. Kodu kaydet
     kullanici.resetKodu = dogrulamaKodu;
-    verileriKaydet(); // Dosyaya yaz ki sunucu kapanırsa gitmesin
+    verileriKaydet();
 
-    // 4. Kodu Konsola Yaz (İleride burası mail atacak)
-    console.log("------------------------------------------------");
-    console.log(`📩 MAİL GÖNDERİLDİ (SİMÜLASYON)`);
-    console.log(`👤 Kime: ${kullanici.ad} (${email})`);
-    console.log(`🔑 DOĞRULAMA KODU: ${dogrulamaKodu}`);
-    console.log("------------------------------------------------");
+    // 4. MAİL GÖNDERME İŞLEMİ (GERÇEK)
+    const mailIcerigi = {
+        from: '"Yurt Yönetim Sistemi" <sizinmailadresiniz@gmail.com>', // Gönderen
+        to: email, // Alıcı (Öğrencinin maili)
+        subject: '🔐 Şifre Sıfırlama Kodunuz',
+        text: `Merhaba ${kullanici.ad},\n\nŞifrenizi sıfırlamak için gereken kodunuz: ${dogrulamaKodu}\n\nBu kodu kimseyle paylaşmayın.`,
+        html: `
+            <h3>Merhaba ${kullanici.ad},</h3>
+            <p>Şifrenizi sıfırlamak için aşağıdaki kodu uygulamaya giriniz:</p>
+            <h1 style="color: #2c3e50; background: #ecf0f1; padding: 10px; display: inline-block;">${dogrulamaKodu}</h1>
+            <p>Bu işlemi siz yapmadıysanız lütfen idareye bildiriniz.</p>
+        `
+    };
 
-    res.json({ basarili: true, mesaj: "✅ Doğrulama kodu e-posta adresinize gönderildi." });
+    try {
+        // Maili gönder
+        await transporter.sendMail(mailIcerigi);
+        
+        console.log(`✅ Mail gönderildi: ${email} -> Kod: ${dogrulamaKodu}`);
+        res.json({ basarili: true, mesaj: "✅ Doğrulama kodu e-posta adresinize gönderildi." });
+        
+    } catch (error) {
+        console.error("Mail gönderme hatası:", error);
+        res.status(500).json({ basarili: false, mesaj: "❌ Mail gönderilemedi. Lütfen daha sonra tekrar deneyin." });
+    }
 });
-
 // --- YENİ: ŞİFREYİ GÜNCELLEME ---
 app.post('/sifre-sifirla', (req, res) => {
     const { email, kod, yeniSifre } = req.body;
@@ -407,6 +433,7 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Sunucu Hazır: http://localhost:${PORT}`);
 
 });
+
 
 
 
