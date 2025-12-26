@@ -11,7 +11,7 @@ const fs = require('fs');
 async function googleMailGonder(aliciEmail, konu, icerikHtml) {
     // 👇👇👇 BURAYA DİKKAT 👇👇👇
     // Az önce "Dağıt" diyerek aldığın uzun linki tırnakların içine yapıştır:
-    const GOOGLE_SCRIPT_URL = "BURAYA_GOOGLE_APPS_SCRIPT_URL_GELECEK"; 
+    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzNMTXMkyQNpAcdk8V5jNPDn97XmU2nflYO84moSUdVgmdoSaY84sWnNX6TxygvcW7cRg/exec"; 
     // 👆👆👆 ÖRN: "https://script.google.com/macros/s/AKfycbx.../exec"
 
     if (GOOGLE_SCRIPT_URL.includes("BURAYA")) {
@@ -356,3 +356,4 @@ app.delete('/izinli-numara-sil/:id', (req, res) => {
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Sunucu Hazır: http://localhost:${PORT}`);
 });
+
