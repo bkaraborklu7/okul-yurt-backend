@@ -153,7 +153,7 @@ app.post('/sifre-kodu-gonder', async (req, res) => {
     verileriKaydet();
 
     const mailIcerigi = {
-        from: '"Yurt Yönetim Sistemi" <deneme3169311@hotmail.com>', // DİKKAT: Yukarıdakiyle AYNI maili yaz
+        from: '"Yurt Yönetim Sistemi" <cursorrmail1@gmail.com>', // DİKKAT: Yukarıdakiyle AYNI maili yaz
         to: email, 
         subject: '🔐 Şifre Sıfırlama Kodunuz',
         html: `
@@ -426,6 +426,7 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Sunucu Hazır: http://localhost:${PORT}`);
 
 });
+
 
 
 
