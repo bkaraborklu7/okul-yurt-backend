@@ -2,15 +2,26 @@ const express = require('express');
 const cors = require('cors');
 const fs = require('fs'); // Dosya okuma/yazma modülü
 const nodemailer = require('nodemailer');
-// --- MAİL AYARLARI (GMAIL OAUTH2 - KESİN ÇÖZÜM) ---
+// --- MAİL AYARLARI (GÜNCELLENMİŞ VERSİYON) ---
 const transporter = nodemailer.createTransport({
     service: 'gmail',
+    logger: true, // Hataları konsola yazar
+    debug: true,  // Detaylı inceleme modu
     auth: {
         type: 'OAuth2',
-        user: 'cursorrmail1@gmail.com', // 1. Yetki verdiğin Gmail adresi
-        clientId: '584590505100-fr1cc6ojfo756d1r9s9ru69oimoeom9c.apps.googleusercontent.com',       // 2. Not aldığın Client ID
-        clientSecret: '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', // 3. Not aldığın Client Secret
-        refreshToken: '1//04Z6p9u6Clf7VCgYIARAAGAQSNwF-L9IrboXpTiIaOANPieZm_H6TEce-CaHDB7usGXSlonZjOqsZaWVBN8m8OTXn008II1NhaNw' // 4. Playground'dan aldığın kod
+        user: 'cursorrmail1@gmail.com',
+        clientId: '584590505100-fr1cc6ojfo756d1r9s9ru69oimoeom9c.apps.googleusercontent.com',
+        clientSecret: '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',
+        refreshToken: '1//04Z6p9u6Clf7VCgYIARAAGAQSNwF-L9IrboXpTiIaOANPieZm_H6TEce-CaHDB7usGXSlonZjOqsZaWVBN8m8OTXn008II1NhaNw'
+    }
+});
+
+// --- BAĞLANTI TESTİ (Bunu transporter'ın hemen altına ekle) ---
+transporter.verify((error, success) => {
+    if (error) {
+        console.error("❌ Google Bağlantı Hatası:", error);
+    } else {
+        console.log("✅ Google Bağlantısı Başarılı! Mail atabiliriz.");
     }
 });
 const app = express();
@@ -138,9 +149,9 @@ app.post('/giris', (req, res) => {
         else res.status(401).json({ basarili: false, mesaj: "Hatalı bilgi!" });
     }
 });
-    // 4. MAİL GÖNDERME İŞLEMİ (GERÇEK)
 app.post('/sifre-kodu-gonder', async (req, res) => {
     const { email } = req.body;
+    console.log(`📩 Mail isteği geldi: ${email}`); // Log ekledik
 
     const kullanici = veritabani.ogrenciler.find(o => o.email === email && o.kayitliMi === true);
 
@@ -153,7 +164,7 @@ app.post('/sifre-kodu-gonder', async (req, res) => {
     verileriKaydet();
 
     const mailIcerigi = {
-        from: '"Yurt Yönetim Sistemi" <cursorrmail1@gmail.com>', // DİKKAT: Yukarıdakiyle AYNI maili yaz
+        from: '"Yurt Yönetim Sistemi" <cursorrmail1@gmail.com>', // BURASI user İLE AYNI OLMALI
         to: email, 
         subject: '🔐 Şifre Sıfırlama Kodunuz',
         html: `
@@ -164,12 +175,12 @@ app.post('/sifre-kodu-gonder', async (req, res) => {
     };
 
     try {
-        await transporter.sendMail(mailIcerigi);
-        console.log(`✅ Mail gönderildi: ${email}`);
+        let info = await transporter.sendMail(mailIcerigi);
+        console.log("✅ Mail Gitti! ID:", info.messageId); // Başarılıysa ID yazar
         res.json({ basarili: true, mesaj: "✅ Kod gönderildi." });
     } catch (error) {
-        console.error("Mail Hatası:", error);
-        res.status(500).json({ basarili: false, mesaj: "Mail gönderilemedi." });
+        console.error("❌ Mail Gönderme Hatası:", error); // Hatayı detaylı yazar
+        res.status(500).json({ basarili: false, mesaj: "Mail gönderilemedi. Hata: " + error.message });
     }
 });
 // --- YENİ: ŞİFREYİ GÜNCELLEME ---
@@ -426,6 +437,7 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Sunucu Hazır: http://localhost:${PORT}`);
 
 });
+
 
 
 
