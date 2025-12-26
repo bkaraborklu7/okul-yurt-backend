@@ -7,7 +7,7 @@ const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
         type: 'OAuth2',
-        user: 'mail_atacak_olan_adresin@gmail.com', // 1. Yetki verdiğin Gmail adresi
+        user: 'cursorrmail1@gmail.com', // 1. Yetki verdiğin Gmail adresi
         clientId: '584590505100-fr1cc6ojfo756d1r9s9ru69oimoeom9c.apps.googleusercontent.com',       // 2. Not aldığın Client ID
         clientSecret: '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', // 3. Not aldığın Client Secret
         refreshToken: '1//04Z6p9u6Clf7VCgYIARAAGAQSNwF-L9IrboXpTiIaOANPieZm_H6TEce-CaHDB7usGXSlonZjOqsZaWVBN8m8OTXn008II1NhaNw' // 4. Playground'dan aldığın kod
@@ -426,6 +426,7 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Sunucu Hazır: http://localhost:${PORT}`);
 
 });
+
 
 
 
