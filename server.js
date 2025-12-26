@@ -2,17 +2,23 @@ const express = require('express');
 const cors = require('cors');
 const fs = require('fs'); // Dosya okuma/yazma modülü
 const nodemailer = require('nodemailer');
-// --- MAİL AYARLARI (GÜNCELLENMİŞ VERSİYON) ---
+// --- MAİL AYARLARI (GMAIL OAUTH2 - PORT 465 SSL ZORLAMA) ---
 const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    logger: true, // Hataları konsola yazar
-    debug: true,  // Detaylı inceleme modu
+    host: 'smtp.gmail.com', // service: 'gmail' yerine direkt adresi yazıyoruz
+    port: 465,              // 587 yerine 465 (SSL) kullanıyoruz
+    secure: true,           // SSL'i açıyoruz (Güvenli Bağlantı)
+    logger: true,
+    debug: true,
     auth: {
         type: 'OAuth2',
         user: 'cursorrmail1@gmail.com',
         clientId: '584590505100-fr1cc6ojfo756d1r9s9ru69oimoeom9c.apps.googleusercontent.com',
         clientSecret: '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',
         refreshToken: '1//04Z6p9u6Clf7VCgYIARAAGAQSNwF-L9IrboXpTiIaOANPieZm_H6TEce-CaHDB7usGXSlonZjOqsZaWVBN8m8OTXn008II1NhaNw'
+    },
+    tls: {
+        // Render sunucularında bazen sertifika sorunu olur, bunu engellemek için:
+        rejectUnauthorized: false 
     }
 });
 
@@ -437,6 +443,7 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Sunucu Hazır: http://localhost:${PORT}`);
 
 });
+
 
 
 
