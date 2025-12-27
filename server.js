@@ -84,25 +84,61 @@ verileriYukle().then(() => { console.log("🚀 Sistem hazır."); });
 // ==================================================================
 
 app.post('/yemekhane-giris', async (req, res) => {
-    const { ogrenciNo } = req.body;
-    const kisi = veritabani.ogrenciler.find(o => o.ogrenciNo === ogrenciNo);
+    // kapiKodu: Flutter'dan gelen QR içeriği (YEMEKHANE_GIRIS veya YEMEKHANE_CIKIS olmalı)
+    const { ogrenciNo, kapiKodu } = req.body; 
+    
+    // 1. GÜVENLİK: Sadece yemekhane için oluşturduğun QR kodları kabul et
+    if (kapiKodu !== "YEMEKHANE_GIRIS" && kapiKodu !== "YEMEKHANE_CIKIS") {
+        return res.status(400).json({ 
+            basarili: false, 
+            mesaj: "❌ Geçersiz QR! Lütfen yemekhane QR'ını okutun." 
+        });
+    }
 
+    const kisi = veritabani.ogrenciler.find(o => o.ogrenciNo === ogrenciNo);
     if (!kisi) return res.status(404).json({ basarili: false, mesaj: "Kayıt bulunamadı!" });
 
-    const yeniKayit = {
-        isim: kisi.ad,
-        tip: kisi.tip || "YURTÇU", // YURTÇU, EVCİ, ÖĞRETMEN, PERSONEL
-        zaman: new Date().toLocaleTimeString("tr-TR"),
-        tarih: new Date().toLocaleDateString("tr-TR")
-    };
+    const bugun = new Date().toLocaleDateString("tr-TR");
+    const suan = new Date().toLocaleTimeString("tr-TR");
 
-    veritabani.yemekhaneKayitlari.unshift(yeniKayit);
-    await verileriKaydet();
-    res.json({ basarili: true, mesaj: `Afiyet olsun, ${kisi.ad}!` });
+    // 2. MANTIK: Giriş mi yapılıyor yoksa Çıkış mı?
+    if (kapiKodu === "YEMEKHANE_GIRIS") {
+        // Yeni bir giriş satırı oluştur
+        const yeniKayit = {
+            ogrenciNo: kisi.ogrenciNo,
+            isim: kisi.ad,
+            tip: kisi.tip || "YURTÇU",
+            girisSaati: suan,
+            cikisSaati: "--:--", // Henüz çıkmadı
+            tarih: bugun
+        };
+
+        veritabani.yemekhaneKayitlari.unshift(yeniKayit);
+        await verileriKaydet();
+        return res.json({ basarili: true, mesaj: `🍴 Afiyet olsun ${kisi.ad}, girişiniz yapıldı.` });
+
+    } else if (kapiKodu === "YEMEKHANE_CIKIS") {
+        // Öğrencinin bugün yaptığı ve henüz çıkış saati girilmemiş kaydını bul
+        const mevcutKayit = veritabani.yemekhaneKayitlari.find(k => 
+            k.ogrenciNo === ogrenciNo && 
+            k.tarih === bugun && 
+            (k.cikisSaati === "--:--" || !k.cikisSaati)
+        );
+
+        if (mevcutKayit) {
+            mevcutKayit.cikisSaati = suan;
+            await verileriKaydet();
+            return res.json({ basarili: true, mesaj: `👋 Güle güle ${kisi.ad}, çıkışınız yapıldı.` });
+        } else {
+            return res.json({ basarili: false, mesaj: "⚠️ Önce giriş yapmanız gerekiyor!" });
+        }
+    }
 });
-
-app.get('/yemekhane-listesi', (req, res) => { res.json(veritabani.yemekhaneKayitlari || []); });
-
+app.get('/yemekhane-listesi', (req, res) => { 
+    // .reverse() ekleyerek son girenlerin en üstte görünmesini sağlarız
+    const liste = veritabani.yemekhaneKayitlari || [];
+    res.json(liste); 
+});
 app.post('/yemekhane-sifirla', async (req, res) => {
     veritabani.yemekhaneKayitlari = [];
     await verileriKaydet();
@@ -282,5 +318,6 @@ app.delete('/izinli-numara-sil/:id', (req, res) => {
 });
 
 app.listen(PORT, '0.0.0.0', () => { console.log(`🚀 Port: ${PORT}`); });
+
 
 
