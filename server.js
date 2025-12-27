@@ -70,10 +70,6 @@ const DOSYA_ADI = 'veriler.json';
 
 // Varsayılan Veriler
 let veritabani = {
-  adminAyarlari: {
-        kullaniciAdi: "admin", // Burayı dilediğin gibi değiştir
-        sifre: "123456"        // Güçlü bir şifre koymayı unutma
-    },
     hareketler: [],
     izinTalepleri: [],
     izinliNumaralar: [],
@@ -187,6 +183,21 @@ app.post('/giris', (req, res) => {
         res.json({ basarili: true, ogrenci: kullanici });
     } else {
         res.status(401).json({ basarili: false, mesaj: "Hatalı bilgi veya kayıt yok!" });
+    }
+});
+// --- ADMİN GİRİŞİ ---
+app.post('/admin-login', (req, res) => {
+    const { kullaniciAdi, sifre } = req.body;
+
+    // Şifreleri burada belirleyebilirsin (Veya Firebase'e taşıyabilirsin)
+    const GERCEK_ADMIN = "admin";
+    const GERCEK_SIFRE = "Sifreniz123"; // Burayı kendine göre güncelle
+
+    if (kullaniciAdi === GERCEK_ADMIN && sifre === GERCEK_SIFRE) {
+        console.log("🔒 Admin girişi yapıldı.");
+        res.json({ basarili: true, mesaj: "Giriş başarılı" });
+    } else {
+        res.status(401).json({ basarili: false, mesaj: "Kullanıcı adı veya şifre hatalı!" });
     }
 });
 
@@ -397,6 +408,7 @@ app.delete('/izinli-numara-sil/:id', (req, res) => {
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Sunucu Hazır: http://localhost:${PORT}`);
 });
+
 
 
 
