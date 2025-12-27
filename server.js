@@ -1,6 +1,18 @@
 const express = require('express');
 const cors = require('cors');
 const fs = require('fs'); 
+const admin = require("firebase-admin"); // Firebase'i kullanabilmek için gerekli
+// Koyeb panelinden FIREBASE_CONFIG değişkenini okuyoruz
+const serviceAccount = JSON.parse(process.env.FIREBASE_CONFIG);
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+  // BURAYA DİKKAT: Firebase'deki kendi Database URL'ini yapıştır
+  databaseURL: "https://okul-yurt-admin-65dd6-default-rtdb.europe-west1.firebasedatabase.app" 
+});
+
+const db = admin.database();
+const ref = db.ref("okul_yurt_verileri"); // Verilerin Google'daki 'klasör' adı
 
 // 🗑️ Nodemailer ve SMTP ayarları ÇÖPE ATILDI.
 // Yerine Native Fetch API kullanıyoruz (Node v18+ destekler, Render'da var).
@@ -65,31 +77,37 @@ let veritabani = {
     belletmenler: []
 };
 
-// 1. Verileri Dosyadan Yükle
-function verileriYukle() {
-    if (fs.existsSync(DOSYA_ADI)) {
-        console.log("📂 Veriler yükleniyor...");
-        try {
-            const dosyaIcerigi = fs.readFileSync(DOSYA_ADI, 'utf-8');
-            veritabani = JSON.parse(dosyaIcerigi);
-            // Eksik alan tamamlama
-            if (!veritabani.izinliNumaralar) veritabani.izinliNumaralar = [];
-            if (!veritabani.belletmenler) veritabani.belletmenler = [];
-            if (!veritabani.ogrenciler) veritabani.ogrenciler = [];
-        } catch (e) { console.error("Veri okuma hatası, varsayılanlar yüklendi."); }
-    } else {
-        console.log("🆕 Yeni veri dosyası oluşturuluyor...");
-        verileriKaydet();
+// Google'dan verileri getiren yeni fonksiyon
+async function verileriYukle() {
+    try {
+        console.log("☁️ Google Firebase'den veriler çekiliyor...");
+        const snapshot = await ref.once("value");
+        const data = snapshot.val();
+        
+        if (data) {
+            veritabani = data; // Google'da veri varsa yerel değişkenimize aktar
+            console.log("✅ Veriler başarıyla senkronize edildi.");
+        } else {
+            console.log("🆕 Google'da veri bulunamadı, boş veritabanı hazırlandı.");
+        }
+    } catch (error) {
+        console.error("❌ Google bağlantı hatası:", error);
+    }
+}
+async function verileriKaydet() {
+    try {
+        // Veriyi hem dosyaya yaz (yedek olsun) hem de anında Google'a gönder
+        fs.writeFileSync(DOSYA_ADI, JSON.stringify(veritabani, null, 2), 'utf-8');
+        await ref.set(veritabani); 
+        console.log("💾 Veriler Google Cloud'a yedeklendi.");
+    } catch (error) {
+        console.error("❌ Kayıt sırasında hata oluştu:", error);
     }
 }
 
-// 2. Verileri Kaydet
-function verileriKaydet() {
-    fs.writeFileSync(DOSYA_ADI, JSON.stringify(veritabani, null, 2), 'utf-8');
-}
-
-verileriYukle();
-
+verileriYukle().then(() => {
+    console.log("🚀 Sistem hazır ve veriler yüklendi.");
+});
 // ==================================================================
 // 🌐 ENDPOINTLER
 // ==================================================================
@@ -356,4 +374,5 @@ app.delete('/izinli-numara-sil/:id', (req, res) => {
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Sunucu Hazır: http://localhost:${PORT}`);
 });
+
 
