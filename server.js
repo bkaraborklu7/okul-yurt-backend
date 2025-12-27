@@ -230,6 +230,7 @@ app.post('/yoklama', (req, res) => {
         ogrenciId: kisi.id,
         isim: `${kisi.ad} (${kisi.tip})`,
         durum_yeni: yeniDurum,
+        mesaj: mesaj,
         zaman: new Date().toLocaleTimeString("tr-TR"),
         timestamp: Date.now()
     });
@@ -318,6 +319,7 @@ app.delete('/izinli-numara-sil/:id', (req, res) => {
 });
 
 app.listen(PORT, '0.0.0.0', () => { console.log(`🚀 Port: ${PORT}`); });
+
 
 
 
