@@ -142,7 +142,8 @@ app.post('/kayit-ol', async (req, res) => {
         sinif: izinliBilgisi.sinif || "-",
         oda: izinliBilgisi.oda || "-",
         durum: "DISARIDA",
-        etutDurumu: "YOK"
+        etutDurumu: "YOK",
+        kayitliMi: true
     };
 
     veritabani.ogrenciler.push(yeniKullanici);
@@ -281,4 +282,5 @@ app.delete('/izinli-numara-sil/:id', (req, res) => {
 });
 
 app.listen(PORT, '0.0.0.0', () => { console.log(`🚀 Port: ${PORT}`); });
+
 
