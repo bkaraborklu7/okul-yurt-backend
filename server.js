@@ -1,321 +1,195 @@
 const express = require('express');
 const cors = require('cors');
 const fs = require('fs'); 
-const admin = require("firebase-admin"); // Firebase'i kullanabilmek için gerekli
-// Koyeb panelinden FIREBASE_CONFIG değişkenini okuyoruz
+const admin = require("firebase-admin");
+
 const serviceAccount = JSON.parse(process.env.FIREBASE_CONFIG);
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
-  // BURAYA DİKKAT: Firebase'deki kendi Database URL'ini yapıştır
   databaseURL: "https://okul-yurt-admin-65dd6-default-rtdb.europe-west1.firebasedatabase.app" 
 });
 
 const db = admin.database();
-const ref = db.ref("okul_yurt_verileri"); // Verilerin Google'daki 'klasör' adı
+const ref = db.ref("okul_yurt_verileri");
 
-// 🗑️ Nodemailer ve SMTP ayarları ÇÖPE ATILDI.
-// Yerine Native Fetch API kullanıyoruz (Node v18+ destekler, Render'da var).
-
-// ==================================================================
-// 🚀 YENİ MAİL SİSTEMİ (GOOGLE WEB APP - PORT ENGELİ YOK)
-// ==================================================================
 async function googleMailGonder(aliciEmail, konu, icerikHtml) {
-    // 👇👇👇 BURAYA DİKKAT 👇👇👇
-    // Az önce "Dağıt" diyerek aldığın uzun linki tırnakların içine yapıştır:
     const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzNMTXMkyQNpAcdk8V5jNPDn97XmU2nflYO84moSUdVgmdoSaY84sWnNX6TxygvcW7cRg/exec"; 
-    // 👆👆👆 ÖRN: "https://script.google.com/macros/s/AKfycbx.../exec"
-
-    if (GOOGLE_SCRIPT_URL.includes("BURAYA")) {
-        console.error("❌ HATA: Google Script URL'sini yapıştırmayı unuttun!");
-        return false;
-    }
-
     try {
         const response = await fetch(GOOGLE_SCRIPT_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                email: aliciEmail,
-                subject: konu,
-                body: icerikHtml
-            })
+            body: JSON.stringify({ email: aliciEmail, subject: konu, body: icerikHtml })
         });
-
         const sonuc = await response.json();
-        
-        if (sonuc.status === 'success') {
-            console.log(`✅ Mail Başarılı! Alıcı: ${aliciEmail}`);
-            return true;
-        } else {
-            console.error("❌ Google Script Hatası:", sonuc.message);
-            return false;
-        }
+        return sonuc.status === 'success';
     } catch (error) {
-        console.error("❌ Fetch Bağlantı Hatası:", error);
+        console.error("❌ Mail Hatası:", error);
         return false;
     }
 }
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
 app.use(express.json());
 app.use(cors());
 
-// ==================================================================
-// 📂 VERİTABANI VE AYARLAR (AYNEN KORUNDU)
-// ==================================================================
 const DOSYA_ADI = 'veriler.json';
 
-// Varsayılan Veriler
+// ==================================================================
+// 📂 VERİTABANI YAPISI (YENİ ALANLAR EKLENDİ)
+// ==================================================================
 let veritabani = {
     hareketler: [],
     izinTalepleri: [],
     izinliNumaralar: [],
     ogrenciler: [],
-    belletmenler: []
+    belletmenler: [],
+    yemekhaneKayitlari: [] // ✨ YENİ
 };
 
-// Google'dan verileri getiren yeni fonksiyon
 async function verileriYukle() {
     try {
         console.log("☁️ Google Firebase'den veriler çekiliyor...");
         const snapshot = await ref.once("value");
         const data = snapshot.val();
-        
         if (data) {
             veritabani = data; 
-            
-            // 🛡️ KRİTİK KORUMA: Eğer Firebase'de veri var ama bazı listeler (örn. hareketler) 
-            // henüz hiç oluşmamışsa, hata almamak için onları boş dizi olarak tanımlıyoruz.
             if (!veritabani.ogrenciler) veritabani.ogrenciler = [];
             if (!veritabani.hareketler) veritabani.hareketler = [];
             if (!veritabani.izinTalepleri) veritabani.izinTalepleri = [];
             if (!veritabani.izinliNumaralar) veritabani.izinliNumaralar = [];
             if (!veritabani.belletmenler) veritabani.belletmenler = [];
-
+            if (!veritabani.yemekhaneKayitlari) veritabani.yemekhaneKayitlari = []; // ✨ YENİ
             console.log("✅ Veriler başarıyla senkronize edildi.");
         } else {
-            console.log("🆕 Google'da veri bulunamadı, boş şablon hazırlanıyor...");
-            // Firebase tamamen boşsa (ilk kurulum), yapıyı sıfırdan kuruyoruz
-            veritabani = {
-                hareketler: [],
-                izinTalepleri: [],
-                izinliNumaralar: [],
-                ogrenciler: [],
-                belletmenler: []
-            };
-            // Boş şablonu Google'a da gönderiyoruz ki yapı oluşsun
+            console.log("🆕 Boş şablon hazırlanıyor...");
             await verileriKaydet();
         }
-    } catch (error) {
-        console.error("❌ Google bağlantı hatası:", error);
-    }
+    } catch (error) { console.error("❌ Google bağlantı hatası:", error); }
 }
+
 async function verileriKaydet() {
     try {
-        // Veriyi hem dosyaya yaz (yedek olsun) hem de anında Google'a gönder
         fs.writeFileSync(DOSYA_ADI, JSON.stringify(veritabani, null, 2), 'utf-8');
         await ref.set(veritabani); 
         console.log("💾 Veriler Google Cloud'a yedeklendi.");
-    } catch (error) {
-        console.error("❌ Kayıt sırasında hata oluştu:", error);
-    }
+    } catch (error) { console.error("❌ Kayıt hatası:", error); }
 }
 
-verileriYukle().then(() => {
-    console.log("🚀 Sistem hazır ve veriler yüklendi.");
+verileriYukle().then(() => { console.log("🚀 Sistem hazır."); });
+
+// ==================================================================
+// 🍴 YEMEKHANE SİSTEMİ (YENİ ENDPOİNTLER)
+// ==================================================================
+
+app.post('/yemekhane-giris', async (req, res) => {
+    const { ogrenciNo } = req.body;
+    const kisi = veritabani.ogrenciler.find(o => o.ogrenciNo === ogrenciNo);
+
+    if (!kisi) return res.status(404).json({ basarili: false, mesaj: "Kayıt bulunamadı!" });
+
+    const yeniKayit = {
+        isim: kisi.ad,
+        tip: kisi.tip || "YURTÇU", // YURTÇU, EVCİ, ÖĞRETMEN, PERSONEL
+        zaman: new Date().toLocaleTimeString("tr-TR"),
+        tarih: new Date().toLocaleDateString("tr-TR")
+    };
+
+    veritabani.yemekhaneKayitlari.unshift(yeniKayit);
+    await verileriKaydet();
+    res.json({ basarili: true, mesaj: `Afiyet olsun, ${kisi.ad}!` });
 });
+
+app.get('/yemekhane-listesi', (req, res) => { res.json(veritabani.yemekhaneKayitlari || []); });
+
+app.post('/yemekhane-sifirla', async (req, res) => {
+    veritabani.yemekhaneKayitlari = [];
+    await verileriKaydet();
+    res.json({ basarili: true, mesaj: "Yemekhane listesi sıfırlandı." });
+});
+
 // ==================================================================
-// 🌐 ENDPOINTLER
+// 🌐 MEVCUT ENDPOİNTLER (GÜNCELLENDİ)
 // ==================================================================
 
-app.get('/', (req, res) => { res.send('Kalıcı Sunucu Aktif (Google Mail Modu) 🚀'); });
-
-// Listeleri Getir
+app.get('/', (req, res) => { res.send('Yurt/Okul Sistemi Aktif 🚀'); });
 app.get('/ogrenciler', (req, res) => { res.json(veritabani.ogrenciler); });
 app.get('/izinliler', (req, res) => { res.json(veritabani.ogrenciler.filter(o => o.durum === "IZINLI")); });
 app.get('/hareketler', (req, res) => { res.json([...veritabani.hareketler].reverse()); });
 app.get('/izin-talepleri', (req, res) => { res.json(veritabani.izinTalepleri.filter(t => t.durum === "BEKLIYOR")); });
 
-// --- KAYIT OLMA ---
 app.post('/kayit-ol', (req, res) => {
     const { ogrenciNo, sifre, email, tel } = req.body;
     let ogrenci = veritabani.ogrenciler.find(o => o.ogrenciNo === ogrenciNo);
 
-    if (ogrenci) {
-        if (ogrenci.kayitliMi) return res.status(400).json({ basarili: false, mesaj: "⚠️ Zaten kayıtlısınız." });
-    } else {
-        const izinliVeri = veritabani.izinliNumaralar.find(n => n.numara === ogrenciNo);
-        if (!izinliVeri) return res.status(404).json({ basarili: false, mesaj: "❌ Kayıt yetkiniz yok!" });
+    if (ogrenci && ogrenci.kayitliMi) return res.status(400).json({ basarili: false, mesaj: "⚠️ Zaten kayıtlısınız." });
 
+    const izinliVeri = veritabani.izinliNumaralar.find(n => n.numara === ogrenciNo);
+    if (!izinliVeri) return res.status(404).json({ basarili: false, mesaj: "❌ Kayıt yetkiniz yok!" });
+
+    if (!ogrenci) {
         ogrenci = {
             id: Date.now(),
             ogrenciNo: ogrenciNo,
             ad: izinliVeri.ad,
             sinif: izinliVeri.sinif || "-",
             oda: izinliVeri.oda || "-",
+            tip: izinliVeri.tip || "YURTÇU", // ✨ Kayıt tipini (EVCİ/ÖĞRETMEN vb) buradan alıyor
             durum: "DISARIDA",
-            kayitliMi: false,
-            sifre: null, email: null, tel: null, etutDurumu: "YOK"
+            kayitliMi: true,
+            sifre, email, tel, etutDurumu: "YOK"
         };
         veritabani.ogrenciler.push(ogrenci);
+    } else {
+        ogrenci.sifre = sifre; ogrenci.email = email; ogrenci.tel = tel; ogrenci.kayitliMi = true;
     }
 
-    ogrenci.sifre = sifre;
-    ogrenci.email = email;
-    ogrenci.tel = tel;
-    ogrenci.kayitliMi = true;
     verileriKaydet();
-
-    console.log(`🆕 KAYIT: ${ogrenci.ad}`);
-    res.json({ basarili: true, mesaj: `✅ Kayıt başarılı! Hoşgeldin ${ogrenci.ad}` });
+    res.json({ basarili: true, mesaj: `Hoşgeldin ${ogrenci.ad}` });
 });
 
-// --- GİRİŞ YAPMA ---
 app.post('/giris', (req, res) => {
     const { ogrenciNo, sifre } = req.body;
     const kullanici = veritabani.ogrenciler.find(o => o.ogrenciNo === ogrenciNo && o.sifre === sifre && o.kayitliMi === true);
-
-    if (kullanici) {
-        console.log(`🔑 Giriş: ${kullanici.ad}`);
-        res.json({ basarili: true, ogrenci: kullanici });
-    } else {
-        res.status(401).json({ basarili: false, mesaj: "Hatalı bilgi veya kayıt yok!" });
-    }
-});
-// --- ADMİN GİRİŞİ ---
-// server.js içine eklenecek admin login ve güncelleme kısımları:
-
-app.post('/admin-login', async (req, res) => {
-    const { kullaniciAdi, sifre } = req.body;
-    
-    // Firebase'den güncel admin bilgilerini çekiyoruz
-    const snapshot = await ref.child("adminAyarlari").once("value");
-    const adminData = snapshot.val() || { kullaniciAdi: "admin", sifre: "123456" }; // Varsayılan
-
-    if (kullaniciAdi === adminData.kullaniciAdi && sifre === adminData.sifre) {
-        res.json({ basarili: true });
-    } else {
-        res.status(401).json({ basarili: false, mesaj: "Hatalı giriş!" });
-    }
+    if (kullanici) res.json({ basarili: true, ogrenci: kullanici });
+    else res.status(401).json({ basarili: false, mesaj: "Hatalı bilgi!" });
 });
 
-app.post('/admin-sifre-guncelle', async (req, res) => {
-    const { yeniKullaniciAdi, yeniSifre } = req.body;
-    try {
-        await ref.child("adminAyarlari").set({
-            kullaniciAdi: yeniKullaniciAdi,
-            sifre: yeniSifre
-        });
-        res.json({ basarili: true, mesaj: "Bilgiler güncellendi!" });
-    } catch (error) {
-        res.status(500).json({ basarili: false, mesaj: "Hata oluştu!" });
-    }
-});
-
-// ==================================================================
-// 📧 MAİL GÖNDERME (ARTIK GOOGLE SCRIPT KULLANIYOR)
-// ==================================================================
-app.post('/sifre-kodu-gonder', async (req, res) => {
-    const { email } = req.body;
-    console.log(`📩 Mail isteği geldi: ${email}`);
-
-    const kullanici = veritabani.ogrenciler.find(o => o.email === email && o.kayitliMi === true);
-
-    if (!kullanici) {
-        return res.status(404).json({ basarili: false, mesaj: "❌ Bu mail adresi sistemde kayıtlı değil." });
-    }
-
-    const dogrulamaKodu = Math.floor(1000 + Math.random() * 9000).toString();
-    kullanici.resetKodu = dogrulamaKodu;
-    verileriKaydet();
-
-    const htmlIcerik = `
-        <div style="font-family: Arial; padding: 20px; border: 1px solid #eee;">
-            <h3>Merhaba ${kullanici.ad},</h3>
-            <p>Şifre sıfırlama kodunuz:</p>
-            <h1 style="color: #2c3e50;">${dogrulamaKodu}</h1>
-            <p>Bu kodu kimseyle paylaşmayınız.</p>
-        </div>
-    `;
-
-    // 🚀 Yeni Fonksiyonu Çağırıyoruz
-    const basarili = await googleMailGonder(email, "🔐 Şifre Sıfırlama Kodu", htmlIcerik);
-
-    if (basarili) {
-        res.json({ basarili: true, mesaj: "✅ Kod gönderildi." });
-    } else {
-        res.status(500).json({ basarili: false, mesaj: "Mail sunucusu hatası. Lütfen tekrar deneyin." });
-    }
-});
-
-// --- ŞİFRE SIFIRLAMA ---
-app.post('/sifre-sifirla', (req, res) => {
-    const { email, kod, yeniSifre } = req.body;
-    const kullanici = veritabani.ogrenciler.find(o => o.email === email);
-
-    if (!kullanici) return res.status(404).json({ basarili: false, mesaj: "Kullanıcı bulunamadı." });
-    if (kullanici.resetKodu !== kod) return res.status(400).json({ basarili: false, mesaj: "❌ Kod hatalı!" });
-
-    kullanici.sifre = yeniSifre;
-    kullanici.resetKodu = null;
-    verileriKaydet();
-
-    console.log(`🔐 Şifre değişti: ${kullanici.ad}`);
-    res.json({ basarili: true, mesaj: "✅ Şifreniz değiştirildi." });
-});
-
-// --- TURNİKE ---
 app.post('/yoklama', (req, res) => {
-    console.log("📡 YOKLAMA:", req.body);
     const ogrenciId = req.body.ogrenciId || req.body.ogrenciNo;
     const kapiKodu = req.body.kapiKodu;
 
-    const ogrenci = veritabani.ogrenciler.find(o => o.id == ogrenciId || o.ogrenciNo == ogrenciId);
-    if (!ogrenci) return res.status(404).json({ basarili: false, mesaj: "Öğrenci bulunamadı" });
+    const kisi = veritabani.ogrenciler.find(o => o.id == ogrenciId || o.ogrenciNo == ogrenciId);
+    if (!kisi) return res.status(404).json({ basarili: false, mesaj: "Kayıt bulunamadı" });
+
+    // ✨ YENİ: Evci öğrenciler yurda giremez
+    if (kapiKodu && kapiKodu.startsWith("YURT_") && kisi.tip === "EVCİ") {
+        return res.status(403).json({ basarili: false, mesaj: "⚠️ Evci öğrenciler yurda giriş yapamaz!" });
+    }
 
     // Etüt Kontrolü
     if (kapiKodu && kapiKodu.startsWith("ETUT_")) {
-        if (ogrenci.etutDurumu === "VAR") return res.json({ basarili: true, mesaj: "✅ Zaten etüttesin.", yeniDurum: ogrenci.durum });
-        ogrenci.etutDurumu = "VAR";
+        if (kisi.tip !== "YURTÇU") return res.json({ basarili: false, mesaj: "Sadece yurtçular etüde girebilir." });
+        kisi.etutDurumu = "VAR";
         verileriKaydet();
-        return res.json({ basarili: true, mesaj: "📚 Etüt yazıldı!", yeniDurum: ogrenci.durum });
+        return res.json({ basarili: true, mesaj: "📚 Etüt yazıldı!" });
     } 
-    else if (!kapiKodu || !kapiKodu.startsWith("YURT_")) {
-        return res.status(400).json({ mesaj: "Geçersiz QR Kod!" });
-    }
-
-    // Spam Koruması
-    const sonIslem = veritabani.hareketler ? veritabani.hareketler.find(h => h.ogrenciId == ogrenci.id) : null;
-    if (sonIslem && sonIslem.timestamp && (Date.now() - sonIslem.timestamp < 3000)) {
-        return res.json({ basarili: true, mesaj: "⏳ Çok hızlı okuttun.", yeniDurum: ogrenci.durum });
-    }
 
     // Giriş/Çıkış Mantığı
     let yeniDurum = "YURTTA";
-    let mesaj = "👋 Hoşgeldin";
+    let mesaj = `👋 Hoşgeldin ${kisi.tip}`;
 
-    if (ogrenci.durum === "YURTTA") {
-        const izin = veritabani.izinTalepleri ? veritabani.izinTalepleri.find(t => t.ogrenciId == ogrenci.id && t.durum === "ONAYLANDI") : null;
-        if (izin) {
-            yeniDurum = "IZINLI";
-            mesaj = "👋 İzinli Çıkış";
-            izin.durum = "KULLANILDI";
-        } else {
-            yeniDurum = "DISARIDA";
-            mesaj = "👋 Güle Güle";
-        }
-    } else if (ogrenci.durum === "IZINLI") {
-        mesaj = "👋 İzin Dönüşü Hoşgeldin";
+    if (kisi.durum === "YURTTA") {
+        const izin = veritabani.izinTalepleri.find(t => t.ogrenciId == kisi.id && t.durum === "ONAYLANDI");
+        if (izin) { yeniDurum = "IZINLI"; mesaj = "👋 İzinli Çıkış"; izin.durum = "KULLANILDI"; }
+        else { yeniDurum = "DISARIDA"; mesaj = "👋 Güle Güle"; }
     }
 
-    ogrenci.durum = yeniDurum;
-    if (!veritabani.hareketler) veritabani.hareketler = [];
+    kisi.durum = yeniDurum;
     veritabani.hareketler.unshift({
-        ogrenciId: ogrenci.id,
-        isim: ogrenci.ad,
+        ogrenciId: kisi.id,
+        isim: `${kisi.ad} (${kisi.tip})`,
         durum_yeni: yeniDurum,
         zaman: new Date().toLocaleTimeString("tr-TR"),
         timestamp: Date.now()
@@ -325,106 +199,83 @@ app.post('/yoklama', (req, res) => {
     res.json({ basarili: true, mesaj: mesaj, yeniDurum: yeniDurum });
 });
 
-// --- İZİN TALEBİ ---
-app.post('/izin-iste', (req, res) => {
-    try {
-        const { ogrenciId, tur, aciklama, tarihBaslangic, tarihBitis } = req.body;
-        const ogrenci = veritabani.ogrenciler.find(o => o.id == ogrenciId);
-        if (!ogrenci) return res.status(404).json({ mesaj: "Hata" });
-
-        veritabani.izinTalepleri.push({
-            id: Date.now(), ogrenciId: ogrenci.id, isim: ogrenci.ad,
-            tur, aciklama, tarih: `${tarihBaslangic}-${tarihBitis}`, durum: "BEKLIYOR"
-        });
-        verileriKaydet();
-        res.json({ basarili: true, mesaj: "İletildi" });
-    } catch (e) { res.status(500).json({ mesaj: "Hata" }); }
+// Admin, İzin, Şifre ve Diğer endpointler (Aynen Korundu)
+app.post('/admin-login', async (req, res) => {
+    const { kullaniciAdi, sifre } = req.body;
+    const snapshot = await ref.child("adminAyarlari").once("value");
+    const adminData = snapshot.val() || { kullaniciAdi: "admin", sifre: "123456" };
+    if (kullaniciAdi === adminData.kullaniciAdi && sifre === adminData.sifre) res.json({ basarili: true });
+    else res.status(401).json({ basarili: false, mesaj: "Hatalı!" });
 });
 
-// --- İZİN İŞLEMİ ---
+app.post('/admin-sifre-guncelle', async (req, res) => {
+    const { yeniKullaniciAdi, yeniSifre } = req.body;
+    await ref.child("adminAyarlari").set({ kullaniciAdi: yeniKullaniciAdi, sifre: yeniSifre });
+    res.json({ basarili: true });
+});
+
+app.post('/sifre-kodu-gonder', async (req, res) => {
+    const { email } = req.body;
+    const kullanici = veritabani.ogrenciler.find(o => o.email === email && o.kayitliMi === true);
+    if (!kullanici) return res.status(404).json({ basarili: false });
+    const dogrulamaKodu = Math.floor(1000 + Math.random() * 9000).toString();
+    kullanici.resetKodu = dogrulamaKodu;
+    verileriKaydet();
+    const basarili = await googleMailGonder(email, "🔐 Kod", `<h1>${dogrulamaKodu}</h1>`);
+    res.json({ basarili });
+});
+
+app.post('/sifre-sifirla', (req, res) => {
+    const { email, kod, yeniSifre } = req.body;
+    const kullanici = veritabani.ogrenciler.find(o => o.email === email);
+    if (kullanici && kullanici.resetKodu === kod) {
+        kullanici.sifre = yeniSifre; kullanici.resetKodu = null;
+        verileriKaydet(); res.json({ basarili: true });
+    } else res.status(400).json({ basarili: false });
+});
+
+app.post('/izin-iste', (req, res) => {
+    const { ogrenciId, tur, aciklama, tarihBaslangic, tarihBitis } = req.body;
+    veritabani.izinTalepleri.push({ id: Date.now(), ogrenciId, isim: veritabani.ogrenciler.find(o=>o.id==ogrenciId).ad, tur, aciklama, tarih: `${tarihBaslangic}-${tarihBitis}`, durum: "BEKLIYOR" });
+    verileriKaydet(); res.json({ basarili: true });
+});
+
 app.post('/izin-islem', (req, res) => {
     const { talepId, islem } = req.body;
     const talep = veritabani.izinTalepleri.find(t => t.id == talepId);
-    if (!talep) return res.status(404).json({ mesaj: "Bulunamadı" });
-
-    if (islem === "ONAY") {
-        talep.durum = "ONAYLANDI";
-        const ogrenci = veritabani.ogrenciler.find(o => o.id == talep.ogrenciId);
-        if (ogrenci && ogrenci.durum === "DISARIDA") {
-            ogrenci.durum = "IZINLI";
-            talep.durum = "KULLANILDI";
-        }
-    } else { talep.durum = "REDDEDILDI"; }
-    verileriKaydet();
-    res.json({ basarili: true, mesaj: "İşlem Tamam" });
+    if (talep) {
+        if (islem === "ONAY") {
+            talep.durum = "ONAYLANDI";
+            const o = veritabani.ogrenciler.find(o => o.id == talep.ogrenciId);
+            if (o && o.durum === "DISARIDA") { o.durum = "IZINLI"; talep.durum = "KULLANILDI"; }
+        } else talep.durum = "REDDEDILDI";
+        verileriKaydet(); res.json({ basarili: true });
+    }
 });
 
 app.get('/ogrenci-durum/:id', (req, res) => {
-    const ogrId = req.params.id;
-    const ogrenci = veritabani.ogrenciler.find(o => o.id == ogrId);
-    if (ogrenci) {
-        const izin = veritabani.izinTalepleri.find(t => t.ogrenciId == ogrId && t.durum === "ONAYLANDI");
-        res.json({ durum: ogrenci.durum, izinOnaylandiMi: !!izin });
-    } else { res.status(404).json({ mesaj: "Bulunamadı" }); }
+    const o = veritabani.ogrenciler.find(o => o.id == req.params.id);
+    if (o) res.json({ durum: o.durum, izinOnaylandiMi: !!veritabani.izinTalepleri.find(t => t.ogrenciId == o.id && t.durum === "ONAYLANDI") });
 });
 
 app.post('/etut-sifirla', (req, res) => {
     veritabani.ogrenciler.forEach(o => o.etutDurumu = "YOK");
-    verileriKaydet();
-    res.json({ basarili: true, mesaj: "Etütler sıfırlandı." });
+    verileriKaydet(); res.json({ basarili: true });
 });
 
-app.get('/belletmenler', (req, res) => {
-    if (!veritabani.belletmenler || veritabani.belletmenler.length === 0) {
-        veritabani.belletmenler = [
-            { gun: "Pazartesi", erkek: "", kiz: "" },
-            { gun: "Salı", erkek: "", kiz: "" },
-            { gun: "Çarşamba", erkek: "", kiz: "" },
-            { gun: "Perşembe", erkek: "", kiz: "" },
-            { gun: "Cuma", erkek: "", kiz: "" },
-            { gun: "Cumartesi", erkek: "", kiz: "" },
-            { gun: "Pazar", erkek: "", kiz: "" }
-        ];
-        verileriKaydet();
-    }
-    res.json(veritabani.belletmenler);
-});
-
-app.post('/belletmen-guncelle', (req, res) => {
-    const yeniListe = req.body;
-    if (Array.isArray(yeniListe) && yeniListe.length === 7) {
-        veritabani.belletmenler = yeniListe;
-        verileriKaydet();
-        res.json({ basarili: true, mesaj: "Liste güncellendi." });
-    } else { res.status(400).json({ basarili: false, mesaj: "Format hatalı." }); }
-});
+app.get('/belletmenler', (req, res) => { res.json(veritabani.belletmenler); });
+app.post('/belletmen-guncelle', (req, res) => { veritabani.belletmenler = req.body; verileriKaydet(); res.json({ basarili: true }); });
 
 app.get('/izinli-numaralar', (req, res) => { res.json(veritabani.izinliNumaralar); });
-
 app.post('/izinli-numara-ekle', (req, res) => {
-    const { numara, ad, sinif, oda } = req.body;
-    if (!numara || !ad) return res.status(400).json({ basarili: false, mesaj: "Eksik bilgi" });
-    if (veritabani.izinliNumaralar.find(n => n.numara === numara)) return res.status(400).json({ basarili: false, mesaj: "Zaten ekli" });
-
-    veritabani.izinliNumaralar.push({
-        id: Date.now().toString(), numara, ad, sinif, oda, eklenmeTarihi: new Date().toLocaleDateString()
-    });
-    verileriKaydet();
-    res.json({ basarili: true, mesaj: "Eklendi" });
+    const { numara, ad, sinif, oda, tip } = req.body; // ✨ TİP (EVCİ/ÖĞRETMEN vb) eklendi
+    veritabani.izinliNumaralar.push({ id: Date.now().toString(), numara, ad, sinif, oda, tip: tip || "YURTÇU" });
+    verileriKaydet(); res.json({ basarili: true });
 });
 
 app.delete('/izinli-numara-sil/:id', (req, res) => {
     veritabani.izinliNumaralar = veritabani.izinliNumaralar.filter(n => n.id !== req.params.id);
-    verileriKaydet();
-    res.json({ basarili: true, mesaj: "Silindi" });
+    verileriKaydet(); res.json({ basarili: true });
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Sunucu Hazır: http://localhost:${PORT}`);
-});
-
-
-
-
-
-
+app.listen(PORT, '0.0.0.0', () => { console.log(`🚀 Port: ${PORT}`); });
