@@ -119,34 +119,36 @@ app.get('/izinliler', (req, res) => { res.json(veritabani.ogrenciler.filter(o =>
 app.get('/hareketler', (req, res) => { res.json([...veritabani.hareketler].reverse()); });
 app.get('/izin-talepleri', (req, res) => { res.json(veritabani.izinTalepleri.filter(t => t.durum === "BEKLIYOR")); });
 
-app.post('/kayit-ol', (req, res) => {
-    const { ogrenciNo, sifre, email, tel } = req.body;
-    let ogrenci = veritabani.ogrenciler.find(o => o.ogrenciNo === ogrenciNo);
+// server.js içindeki kayıt fonksiyonunu şu mantıkla güncelleyin
+app.post('/kayit-ol', async (req, res) => {
+    const { ogrenciNo, email, tel, sifre } = req.body;
 
-    if (ogrenci && ogrenci.kayitliMi) return res.status(400).json({ basarili: false, mesaj: "⚠️ Zaten kayıtlısınız." });
+    // 1. Önce bu numara "izinli numaralar" listesinde hangi tiple kayıtlı?
+    const izinliBilgisi = veritabani.izinliNumaralar.find(n => n.numara === ogrenciNo);
 
-    const izinliVeri = veritabani.izinliNumaralar.find(n => n.numara === ogrenciNo);
-    if (!izinliVeri) return res.status(404).json({ basarili: false, mesaj: "❌ Kayıt yetkiniz yok!" });
-
-    if (!ogrenci) {
-        ogrenci = {
-            id: Date.now(),
-            ogrenciNo: ogrenciNo,
-            ad: izinliVeri.ad,
-            sinif: izinliVeri.sinif || "-",
-            oda: izinliVeri.oda || "-",
-            tip: izinliVeri.tip || "YURTÇU", // ✨ Kayıt tipini (EVCİ/ÖĞRETMEN vb) buradan alıyor
-            durum: "DISARIDA",
-            kayitliMi: true,
-            sifre, email, tel, etutDurumu: "YOK"
-        };
-        veritabani.ogrenciler.push(ogrenci);
-    } else {
-        ogrenci.sifre = sifre; ogrenci.email = email; ogrenci.tel = tel; ogrenci.kayitliMi = true;
+    if (!izinliBilgisi) {
+        return res.status(400).json({ basarili: false, mesaj: "Bu numara sistemde tanımlı değil!" });
     }
 
-    verileriKaydet();
-    res.json({ basarili: true, mesaj: `Hoşgeldin ${ogrenci.ad}` });
+    // 2. Kullanıcıyı oluştururken Admin'in seçtiği tipi (YURTÇU, ÖĞRETMEN vb.) ekle
+    const yeniKullanici = {
+        id: Date.now(),
+        ogrenciNo,
+        email,
+        tel,
+        sifre,
+        ad: izinliBilgisi.ad,
+        tip: izinliBilgisi.tip, // Admin panelinde seçilen tip burada devreye giriyor
+        sinif: izinliBilgisi.sinif || "-",
+        oda: izinliBilgisi.oda || "-",
+        durum: "DISARIDA",
+        etutDurumu: "YOK"
+    };
+
+    veritabani.ogrenciler.push(yeniKullanici);
+    await verileriKaydet();
+
+    res.json({ basarili: true, mesaj: "Kayıt başarılı! Giriş yapabilirsiniz." });
 });
 
 app.post('/giris', (req, res) => {
@@ -279,3 +281,4 @@ app.delete('/izinli-numara-sil/:id', (req, res) => {
 });
 
 app.listen(PORT, '0.0.0.0', () => { console.log(`🚀 Port: ${PORT}`); });
+
