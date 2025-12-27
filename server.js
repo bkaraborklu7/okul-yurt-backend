@@ -186,18 +186,32 @@ app.post('/giris', (req, res) => {
     }
 });
 // --- ADMİN GİRİŞİ ---
-app.post('/admin-login', (req, res) => {
+// server.js içine eklenecek admin login ve güncelleme kısımları:
+
+app.post('/admin-login', async (req, res) => {
     const { kullaniciAdi, sifre } = req.body;
+    
+    // Firebase'den güncel admin bilgilerini çekiyoruz
+    const snapshot = await ref.child("adminAyarlari").once("value");
+    const adminData = snapshot.val() || { kullaniciAdi: "admin", sifre: "123456" }; // Varsayılan
 
-    // Şifreleri burada belirleyebilirsin (Veya Firebase'e taşıyabilirsin)
-    const GERCEK_ADMIN = "admin";
-    const GERCEK_SIFRE = "Sifreniz123"; // Burayı kendine göre güncelle
-
-    if (kullaniciAdi === GERCEK_ADMIN && sifre === GERCEK_SIFRE) {
-        console.log("🔒 Admin girişi yapıldı.");
-        res.json({ basarili: true, mesaj: "Giriş başarılı" });
+    if (kullaniciAdi === adminData.kullaniciAdi && sifre === adminData.sifre) {
+        res.json({ basarili: true });
     } else {
-        res.status(401).json({ basarili: false, mesaj: "Kullanıcı adı veya şifre hatalı!" });
+        res.status(401).json({ basarili: false, mesaj: "Hatalı giriş!" });
+    }
+});
+
+app.post('/admin-sifre-guncelle', async (req, res) => {
+    const { yeniKullaniciAdi, yeniSifre } = req.body;
+    try {
+        await ref.child("adminAyarlari").set({
+            kullaniciAdi: yeniKullaniciAdi,
+            sifre: yeniSifre
+        });
+        res.json({ basarili: true, mesaj: "Bilgiler güncellendi!" });
+    } catch (error) {
+        res.status(500).json({ basarili: false, mesaj: "Hata oluştu!" });
     }
 });
 
@@ -408,6 +422,7 @@ app.delete('/izinli-numara-sil/:id', (req, res) => {
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Sunucu Hazır: http://localhost:${PORT}`);
 });
+
 
 
 
