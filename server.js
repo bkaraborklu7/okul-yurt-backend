@@ -70,6 +70,10 @@ const DOSYA_ADI = 'veriler.json';
 
 // Varsayılan Veriler
 let veritabani = {
+  adminAyarlari: {
+        kullaniciAdi: "admin", // Burayı dilediğin gibi değiştir
+        sifre: "123456"        // Güçlü bir şifre koymayı unutma
+    },
     hareketler: [],
     izinTalepleri: [],
     izinliNumaralar: [],
@@ -393,6 +397,7 @@ app.delete('/izinli-numara-sil/:id', (req, res) => {
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Sunucu Hazır: http://localhost:${PORT}`);
 });
+
 
 
 
