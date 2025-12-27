@@ -85,10 +85,29 @@ async function verileriYukle() {
         const data = snapshot.val();
         
         if (data) {
-            veritabani = data; // Google'da veri varsa yerel değişkenimize aktar
+            veritabani = data; 
+            
+            // 🛡️ KRİTİK KORUMA: Eğer Firebase'de veri var ama bazı listeler (örn. hareketler) 
+            // henüz hiç oluşmamışsa, hata almamak için onları boş dizi olarak tanımlıyoruz.
+            if (!veritabani.ogrenciler) veritabani.ogrenciler = [];
+            if (!veritabani.hareketler) veritabani.hareketler = [];
+            if (!veritabani.izinTalepleri) veritabani.izinTalepleri = [];
+            if (!veritabani.izinliNumaralar) veritabani.izinliNumaralar = [];
+            if (!veritabani.belletmenler) veritabani.belletmenler = [];
+
             console.log("✅ Veriler başarıyla senkronize edildi.");
         } else {
-            console.log("🆕 Google'da veri bulunamadı, boş veritabanı hazırlandı.");
+            console.log("🆕 Google'da veri bulunamadı, boş şablon hazırlanıyor...");
+            // Firebase tamamen boşsa (ilk kurulum), yapıyı sıfırdan kuruyoruz
+            veritabani = {
+                hareketler: [],
+                izinTalepleri: [],
+                izinliNumaralar: [],
+                ogrenciler: [],
+                belletmenler: []
+            };
+            // Boş şablonu Google'a da gönderiyoruz ki yapı oluşsun
+            await verileriKaydet();
         }
     } catch (error) {
         console.error("❌ Google bağlantı hatası:", error);
@@ -374,5 +393,6 @@ app.delete('/izinli-numara-sil/:id', (req, res) => {
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Sunucu Hazır: http://localhost:${PORT}`);
 });
+
 
 
