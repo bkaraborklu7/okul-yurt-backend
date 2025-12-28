@@ -358,7 +358,6 @@ async function verileriYukle() {
         const data = snapshot.val();
         if (data) {
             veritabani = data; 
-            // Dizi kontrolleri (Hata önleyici)
             if (!veritabani.ogrenciler) veritabani.ogrenciler = [];
             if (!veritabani.hareketler) veritabani.hareketler = [];
             if (!veritabani.izinTalepleri) veritabani.izinTalepleri = [];
@@ -382,9 +381,8 @@ async function verileriKaydet() {
 verileriYukle().then(() => { console.log("🚀 Sistem Tam Kapasite Hazır."); });
 
 // ==================================================================
-// 🔍 GET ENDPOİNTLERİ (Admin Paneli İçin)
+// 🔍 GET ENDPOİNTLERİ
 // ==================================================================
-
 app.get('/ogrenciler', (req, res) => res.json(veritabani.ogrenciler));
 app.get('/izinli-numaralar', (req, res) => res.json(veritabani.izinliNumaralar));
 app.get('/hareketler', (req, res) => res.json(veritabani.hareketler));
@@ -396,7 +394,6 @@ app.get('/belletmenler', (req, res) => res.json(veritabani.belletmenler));
 // 💳 KARTLI GEÇİŞ & YEMEKHANE (IoT UYUMLU)
 // ==================================================================
 
-// Kartlı Yemekhane İşlemi
 app.post('/yemekhane-kart', async (req, res) => {
     const { kartId, kapiKodu } = req.body;
     const kisi = veritabani.ogrenciler.find(o => o.kartId === kartId);
@@ -430,7 +427,6 @@ app.post('/yemekhane-kart', async (req, res) => {
     }
 });
 
-// Kartlı Turnike Yoklama
 app.post('/yoklama-kart', async (req, res) => {
     const { kartId, kapiKodu } = req.body;
     const kisi = veritabani.ogrenciler.find(o => o.kartId === kartId);
@@ -531,46 +527,58 @@ app.delete('/izinli-numara-sil/:id', async (req, res) => {
 });
 
 app.post('/kayit-ol', async (req, res) => {
-    const { ogrenciNo, email, tel, sifre } = req.body;
+    try {
+        const { ogrenciNo, email, tel, sifre } = req.body;
 
-    // 1. Önce Admin panelindeki "İzinli Numaralar" listesinde bu öğrenciyi bul
-    const izinliBilgisi = veritabani.izinliNumaralar.find(n => n.numara === ogrenciNo);
+        // ✨ HATA DÜZELTME: Veri tiplerini garantilemek için toString() ve trim() ekledik
+        const arananNo = ogrenciNo ? ogrenciNo.toString().trim() : "";
 
-    if (!izinliBilgisi) {
-        return res.status(400).json({ 
-            basarili: false, 
-            mesaj: "Bu numara sistemde tanımlı değil! Lütfen idareye başvurun." 
-        });
+        // 1. İzinli Numaralar listesinde tara
+        const izinliBilgisi = veritabani.izinliNumaralar.find(n => 
+            (n.numara ? n.numara.toString().trim() : "") === arananNo
+        );
+
+        if (!izinliBilgisi) {
+            return res.status(400).json({ 
+                basarili: false, 
+                mesaj: "Bu numara sistemde tanımlı değil! Lütfen idareye başvurun." 
+            });
+        }
+
+        // 2. Zaten kayıtlı mı kontrol et
+        const zatenKayitli = veritabani.ogrenciler.find(o => 
+            (o.ogrenciNo ? o.ogrenciNo.toString().trim() : "") === arananNo
+        );
+        
+        if (zatenKayitli) {
+            return res.status(400).json({ basarili: false, mesaj: "Bu numara ile zaten kayıt olunmuş!" });
+        }
+
+        // 3. Kullanıcıyı oluştur
+        const yeniKullanici = {
+            id: Date.now(),
+            ogrenciNo: arananNo,
+            email: email,
+            tel: tel,
+            sifre: sifre,
+            ad: izinliBilgisi.ad,
+            tip: izinliBilgisi.tip || "YURTÇU",
+            sinif: izinliBilgisi.sinif || "-",
+            oda: izinliBilgisi.oda || "-",
+            kartId: izinliBilgisi.kartId || "", 
+            durum: "DISARIDA",
+            etutDurumu: "YOK",
+            kayitliMi: true
+        };
+
+        veritabani.ogrenciler.push(yeniKullanici);
+        await verileriKaydet();
+
+        res.json({ basarili: true, mesaj: "Kayıt başarılı! Giriş yapabilirsiniz." });
+    } catch (err) {
+        console.error("Kayıt Hatası:", err);
+        res.status(500).json({ basarili: false, mesaj: "Sunucu hatası oluştu." });
     }
-
-    // 2. Zaten kayıtlı mı kontrol et (Mükerrer kaydı önlemek için)
-    const zatenKayitli = veritabani.ogrenciler.find(o => o.ogrenciNo === ogrenciNo);
-    if (zatenKayitli) {
-        return res.status(400).json({ basarili: false, mesaj: "Bu numara ile zaten kayıt olunmuş!" });
-    }
-
-    // 3. Kullanıcıyı oluştururken Admin'in tanımladığı KART ID ve TİP bilgilerini kopyala
-    const yeniKullanici = {
-        id: Date.now(),
-        ogrenciNo,
-        email,
-        tel,
-        sifre,
-        ad: izinliBilgisi.ad,
-        tip: izinliBilgisi.tip || "YURTÇU",
-        sinif: izinliBilgisi.sinif || "-",
-        oda: izinliBilgisi.oda || "-",
-        // ✨ İŞTE ÇÖZÜM BURASI: Admin panelinde girilen kartId artık profile işleniyor
-        kartId: izinliBilgisi.kartId || "", 
-        durum: "DISARIDA",
-        etutDurumu: "YOK",
-        kayitliMi: true
-    };
-
-    veritabani.ogrenciler.push(yeniKullanici);
-    await verileriKaydet();
-
-    res.json({ basarili: true, mesaj: "Kayıt başarılı! Giriş yapabilirsiniz." });
 });
 
 app.post('/admin-login', async (req, res) => {
@@ -588,5 +596,4 @@ app.post('/yemekhane-sifirla', async (req, res) => {
 });
 
 app.listen(PORT, '0.0.0.0', () => { console.log(`🚀 Port: ${PORT}`); });
-
 
