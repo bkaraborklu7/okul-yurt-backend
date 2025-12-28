@@ -657,12 +657,19 @@ app.post('/giris', (req, res) => {
 app.get('/ogrenci-durum/:id', (req, res) => {
     try {
         const arananId = req.params.id;
-
-        // Öğrenciyi veritabanında ara (id karşılaştırması yapıyoruz)
         const ogrenci = veritabani.ogrenciler.find(o => o.id.toString() === arananId.toString());
 
         if (ogrenci) {
-            // Öğrencinin aktif bir onaylı izni var mı kontrol et
+            const bugun = new Date().toLocaleDateString("tr-TR");
+            
+            // Yemekhanede mi? (Giriş yapmış ama henüz çıkış yapmamış kaydı var mı?)
+            const yemekhanedeMi = veritabani.yemekhaneKayitlari.find(k => 
+                k.ogrenciNo === ogrenci.ogrenciNo && 
+                k.tarih === bugun && 
+                k.cikisSaati === "--:--"
+            );
+
+            // İzin kontrolü
             const izinVarMi = veritabani.izinTalepleri.find(t => 
                 t.ogrenciId.toString() === arananId.toString() && 
                 t.durum === "ONAYLANDI"
@@ -671,13 +678,13 @@ app.get('/ogrenci-durum/:id', (req, res) => {
             res.json({ 
                 basarili: true,
                 durum: ogrenci.durum, 
-                izinOnaylandiMi: !!izinVarMi // Varsa true, yoksa false döner
+                izinOnaylandiMi: !!izinVarMi,
+                yemekhaneDurumu: !!yemekhanedeMi // ✨ Yeni: true/false döner
             });
         } else {
             res.status(404).json({ basarili: false, mesaj: "Öğrenci bulunamadı" });
         }
     } catch (err) {
-        console.error("Durum Sorgulama Hatası:", err);
         res.status(500).json({ basarili: false, mesaj: "Sunucu hatası" });
     }
 });
@@ -696,6 +703,7 @@ app.post('/yemekhane-sifirla', async (req, res) => {
 });
 
 app.listen(PORT, '0.0.0.0', () => { console.log(`🚀 Port: ${PORT}`); });
+
 
 
 
