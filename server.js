@@ -319,12 +319,12 @@
 // });
 
 // app.listen(PORT, '0.0.0.0', () => { console.log(`🚀 Port: ${PORT}`); });
-
 const express = require('express');
 const cors = require('cors');
 const fs = require('fs'); 
 const admin = require("firebase-admin");
 
+// Firebase Yapılandırması
 const serviceAccount = JSON.parse(process.env.FIREBASE_CONFIG);
 
 admin.initializeApp({
@@ -335,29 +335,12 @@ admin.initializeApp({
 const db = admin.database();
 const ref = db.ref("okul_yurt_verileri");
 
-async function googleMailGonder(aliciEmail, konu, icerikHtml) {
-    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzNMTXMkyQNpAcdk8V5jNPDn97XmU2nflYO84moSUdVgmdoSaY84sWnNX6TxygvcW7cRg/exec"; 
-    try {
-        const response = await fetch(GOOGLE_SCRIPT_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: aliciEmail, subject: konu, body: icerikHtml })
-        });
-        const sonuc = await response.json();
-        return sonuc.status === 'success';
-    } catch (error) {
-        console.error("❌ Mail Hatası:", error);
-        return false;
-    }
-}
-
 const app = express();
 const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(cors());
 
-const DOSYA_ADI = 'veriler.json';
-
+// Veritabanı Şablonu
 let veritabani = {
     hareketler: [],
     izinTalepleri: [],
@@ -367,41 +350,55 @@ let veritabani = {
     yemekhaneKayitlari: []
 };
 
+// Verileri Firebase'den Çekme
 async function verileriYukle() {
     try {
+        console.log("☁️ Veriler Firebase'den çekiliyor...");
         const snapshot = await ref.once("value");
         const data = snapshot.val();
         if (data) {
             veritabani = data; 
+            // Dizi kontrolleri (Hata önleyici)
             if (!veritabani.ogrenciler) veritabani.ogrenciler = [];
             if (!veritabani.hareketler) veritabani.hareketler = [];
             if (!veritabani.izinTalepleri) veritabani.izinTalepleri = [];
             if (!veritabani.izinliNumaralar) veritabani.izinliNumaralar = [];
             if (!veritabani.belletmenler) veritabani.belletmenler = [];
             if (!veritabani.yemekhaneKayitlari) veritabani.yemekhaneKayitlari = [];
-            console.log("✅ Veriler senkronize edildi.");
+            console.log("✅ Veriler senkronize.");
         } else {
             await verileriKaydet();
         }
-    } catch (error) { console.error("❌ Hata:", error); }
+    } catch (error) { console.error("❌ Yükleme Hatası:", error); }
 }
 
+// Verileri Firebase'e Kaydetme
 async function verileriKaydet() {
     try {
-        fs.writeFileSync(DOSYA_ADI, JSON.stringify(veritabani, null, 2), 'utf-8');
         await ref.set(veritabani); 
     } catch (error) { console.error("❌ Kayıt hatası:", error); }
 }
 
-verileriYukle().then(() => { console.log("🚀 Sistem Kartlı Geçişe Hazır."); });
+verileriYukle().then(() => { console.log("🚀 Sistem Tam Kapasite Hazır."); });
 
 // ==================================================================
-// 💳 KARTLI YEMEKHANE SİSTEMİ (IoT UYUMLU)
+// 🔍 GET ENDPOİNTLERİ (Admin Paneli İçin)
 // ==================================================================
 
+app.get('/ogrenciler', (req, res) => res.json(veritabani.ogrenciler));
+app.get('/izinli-numaralar', (req, res) => res.json(veritabani.izinliNumaralar));
+app.get('/hareketler', (req, res) => res.json(veritabani.hareketler));
+app.get('/izin-talepleri', (req, res) => res.json(veritabani.izinTalepleri));
+app.get('/yemekhane-listesi', (req, res) => res.json(veritabani.yemekhaneKayitlari));
+app.get('/belletmenler', (req, res) => res.json(veritabani.belletmenler));
+
+// ==================================================================
+// 💳 KARTLI GEÇİŞ & YEMEKHANE (IoT UYUMLU)
+// ==================================================================
+
+// Kartlı Yemekhane İşlemi
 app.post('/yemekhane-kart', async (req, res) => {
-    const { kartId, kapiKodu } = req.body; // kapiKodu: YEMEKHANE_GIRIS / YEMEKHANE_CIKIS
-
+    const { kartId, kapiKodu } = req.body;
     const kisi = veritabani.ogrenciler.find(o => o.kartId === kartId);
     if (!kisi) return res.status(404).json({ basarili: false, mesaj: "Tanımsız Kart!" });
 
@@ -433,33 +430,25 @@ app.post('/yemekhane-kart', async (req, res) => {
     }
 });
 
-// ==================================================================
-// 🚪 KARTLI TURNİKE SİSTEMİ (IoT UYUMLU)
-// ==================================================================
-
+// Kartlı Turnike Yoklama
 app.post('/yoklama-kart', async (req, res) => {
-    const { kartId, kapiKodu } = req.body; // kapiKodu: YURT_KAPI, BAHCE_KAPI vb.
-
+    const { kartId, kapiKodu } = req.body;
     const kisi = veritabani.ogrenciler.find(o => o.kartId === kartId);
-    if (!kisi) return res.status(404).json({ basarili: false, mesaj: "Kart Sistemde Kayıtlı Değil!" });
+    if (!kisi) return res.status(404).json({ basarili: false, mesaj: "Kart Kayıtlı Değil!" });
 
-    // Evci Kontrolü
     if (kapiKodu && kapiKodu.startsWith("YURT_") && kisi.tip === "EVCİ") {
         return res.status(403).json({ basarili: false, mesaj: "Evci girişi yasak!" });
     }
 
-    let yeniDurum = "YURTTA";
-    let mesaj = `Hoşgeldin ${kisi.ad}`;
+    let yeniDurum = (kisi.durum === "YURTTA") ? "DISARIDA" : "YURTTA";
+    let mesaj = yeniDurum === "YURTTA" ? `Hoşgeldin ${kisi.ad}` : "Güle Güle";
 
-    if (kisi.durum === "YURTTA") {
+    if (yeniDurum === "DISARIDA") {
         const izin = veritabani.izinTalepleri.find(t => t.ogrenciId == kisi.id && t.durum === "ONAYLANDI");
         if (izin) { 
             yeniDurum = "IZINLI"; 
             mesaj = "İzinli Çıkış Yapıldı"; 
             izin.durum = "KULLANILDI"; 
-        } else { 
-            yeniDurum = "DISARIDA"; 
-            mesaj = "Güle Güle"; 
         }
     }
 
@@ -475,58 +464,61 @@ app.post('/yoklama-kart', async (req, res) => {
     });
 
     await verileriKaydet();
-    res.json({ basarili: true, mesaj: mesaj, yeniDurum: yeniDurum });
+    res.json({ basarili: true, mesaj, yeniDurum });
 });
 
 // ==================================================================
-// 🌐 STANDART ENDPOİNTLER
+// 📝 İZİN & ETÜT & BELLETMEN İŞLEMLERİ
 // ==================================================================
 
-app.post('/kayit-ol', async (req, res) => {
-    const { ogrenciNo, email, tel, sifre } = req.body;
-    const izinli = veritabani.izinliNumaralar.find(n => n.numara === ogrenciNo);
-
-    if (!izinli) return res.status(400).json({ basarili: false, mesaj: "Numara izni yok!" });
-
-    const yeni = {
+app.post('/izin-iste', async (req, res) => {
+    const { ogrenciId, tur, aciklama, tarihBaslangic, tarihBitis } = req.body;
+    const ogrenci = veritabani.ogrenciler.find(o => o.id == ogrenciId);
+    veritabani.izinTalepleri.push({
         id: Date.now(),
-        ogrenciNo,
-        email,
-        tel,
-        sifre,
-        ad: izinli.ad,
-        tip: izinli.tip,
-        sinif: izinli.sinif || "-",
-        oda: izinli.oda || "-",
-        kartId: izinli.kartId || "TANIMSIZ", // Kart ID izin listesinden gelir
-        durum: "DISARIDA",
-        etutDurumu: "YOK",
-        kayitliMi: true
-    };
-
-    veritabani.ogrenciler.push(yeni);
+        ogrenciId,
+        isim: ogrenci ? ogrenci.ad : "Bilinmeyen",
+        tur,
+        aciklama,
+        tarih: `${tarihBaslangic}-${tarihBitis}`,
+        durum: "BEKLIYOR"
+    });
     await verileriKaydet();
-    res.json({ basarili: true, mesaj: "Kayıt Başarılı!" });
+    res.json({ basarili: true });
 });
 
-app.post('/giris', (req, res) => {
-    const { ogrenciNo, sifre } = req.body;
-    const kullanici = veritabani.ogrenciler.find(o => o.ogrenciNo === ogrenciNo && o.sifre === sifre);
-    if (kullanici) res.json({ basarili: true, ogrenci: kullanici });
-    else res.status(401).json({ basarili: false, mesaj: "Hatalı Giriş!" });
+app.post('/izin-islem', async (req, res) => {
+    const { talepId, islem } = req.body;
+    const talep = veritabani.izinTalepleri.find(t => t.id == talepId);
+    if (talep) {
+        talep.durum = (islem === "ONAY") ? "ONAYLANDI" : "REDDEDILDI";
+        await verileriKaydet();
+        res.json({ basarili: true });
+    } else {
+        res.status(404).json({ basarili: false, mesaj: "Talep bulunamadı." });
+    }
 });
 
-// Admin İşlemleri
-app.get('/ogrenciler', (req, res) => res.json(veritabani.ogrenciler));
-app.get('/hareketler', (req, res) => res.json([...veritabani.hareketler].reverse()));
-app.get('/yemekhane-listesi', (req, res) => res.json(veritabani.yemekhaneKayitlari));
+app.post('/etut-sifirla', async (req, res) => {
+    veritabani.ogrenciler.forEach(o => o.etutDurumu = "YOK");
+    await verileriKaydet();
+    res.json({ basarili: true });
+});
+
+app.post('/belletmen-guncelle', async (req, res) => {
+    veritabani.belletmenler = req.body;
+    await verileriKaydet();
+    res.json({ basarili: true });
+});
+
+// ==================================================================
+// 🔐 KAYIT & GİRİŞ & ADMİN
+// ==================================================================
 
 app.post('/izinli-numara-ekle', async (req, res) => {
     const { numara, ad, sinif, oda, tip, kartId } = req.body;
     veritabani.izinliNumaralar.push({ 
-        id: Date.now().toString(), 
-        numara, ad, sinif, oda, tip, 
-        kartId: kartId || "" // ✨ Kart ID artık burada tanımlanıyor
+        id: Date.now().toString(), numara, ad, sinif, oda, tip, kartId: kartId || "" 
     });
     await verileriKaydet();
     res.json({ basarili: true });
@@ -534,6 +526,21 @@ app.post('/izinli-numara-ekle', async (req, res) => {
 
 app.delete('/izinli-numara-sil/:id', async (req, res) => {
     veritabani.izinliNumaralar = veritabani.izinliNumaralar.filter(n => n.id !== req.params.id);
+    await verileriKaydet();
+    res.json({ basarili: true });
+});
+
+app.post('/kayit-ol', async (req, res) => {
+    const { ogrenciNo, email, tel, sifre } = req.body;
+    const izinli = veritabani.izinliNumaralar.find(n => n.numara === ogrenciNo);
+    if (!izinli) return res.status(400).json({ basarili: false, mesaj: "İzniniz bulunmuyor!" });
+
+    const yeni = {
+        id: Date.now(), ogrenciNo, email, tel, sifre, ad: izinli.ad, tip: izinli.tip,
+        sinif: izinli.sinif || "-", oda: izinli.oda || "-", kartId: izinli.kartId || "",
+        durum: "DISARIDA", etutDurumu: "YOK", kayitliMi: true
+    };
+    veritabani.ogrenciler.push(yeni);
     await verileriKaydet();
     res.json({ basarili: true });
 });
@@ -546,7 +553,10 @@ app.post('/admin-login', async (req, res) => {
     else res.status(401).json({ basarili: false });
 });
 
-// Diğer fonksiyonlar (İzin Talebi, Belletmen vb. kodun devamına eklenebilir)
-// ... (Gönderdiğin geri kalan tüm app.get/post'ları buraya ekleyebilirsin)
+app.post('/yemekhane-sifirla', async (req, res) => {
+    veritabani.yemekhaneKayitlari = [];
+    await verileriKaydet();
+    res.json({ basarili: true });
+});
 
 app.listen(PORT, '0.0.0.0', () => { console.log(`🚀 Port: ${PORT}`); });
