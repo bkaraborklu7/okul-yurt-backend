@@ -417,7 +417,7 @@ app.post('/yemekhane-kart', async (req, res) => {
     } 
     
     if (kapiKodu === "YEMEKHANE_CIKIS") {
-        const kayit = veritabani.yemekhaneKayitlari.find(k => k.ogrenciNo === kisi.ogrenciNo && k.tarih === bugun && k.cikisSaati === "--:--");
+        const kayit = veritabani.yemekhaneKayitlari.find(k => k.ogrenciNo.toString() === kisi.ogrenciNo.toString() && k.tarih === bugun && k.cikisSaati === "--:--");
         if (kayit) {
             kayit.cikisSaati = suan;
             await verileriKaydet();
@@ -703,6 +703,7 @@ app.post('/yemekhane-sifirla', async (req, res) => {
 });
 
 app.listen(PORT, '0.0.0.0', () => { console.log(`🚀 Port: ${PORT}`); });
+
 
 
 
