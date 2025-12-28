@@ -654,7 +654,33 @@ app.post('/giris', (req, res) => {
         res.status(500).json({ basarili: false, mesaj: "Sunucu hatası." });
     }
 });
+app.get('/ogrenci-durum/:id', (req, res) => {
+    try {
+        const arananId = req.params.id;
 
+        // Öğrenciyi veritabanında ara (id karşılaştırması yapıyoruz)
+        const ogrenci = veritabani.ogrenciler.find(o => o.id.toString() === arananId.toString());
+
+        if (ogrenci) {
+            // Öğrencinin aktif bir onaylı izni var mı kontrol et
+            const izinVarMi = veritabani.izinTalepleri.find(t => 
+                t.ogrenciId.toString() === arananId.toString() && 
+                t.durum === "ONAYLANDI"
+            );
+
+            res.json({ 
+                basarili: true,
+                durum: ogrenci.durum, 
+                izinOnaylandiMi: !!izinVarMi // Varsa true, yoksa false döner
+            });
+        } else {
+            res.status(404).json({ basarili: false, mesaj: "Öğrenci bulunamadı" });
+        }
+    } catch (err) {
+        console.error("Durum Sorgulama Hatası:", err);
+        res.status(500).json({ basarili: false, mesaj: "Sunucu hatası" });
+    }
+});
 app.post('/admin-login', async (req, res) => {
     const { kullaniciAdi, sifre } = req.body;
     const snapshot = await ref.child("adminAyarlari").once("value");
@@ -670,6 +696,7 @@ app.post('/yemekhane-sifirla', async (req, res) => {
 });
 
 app.listen(PORT, '0.0.0.0', () => { console.log(`🚀 Port: ${PORT}`); });
+
 
 
 
