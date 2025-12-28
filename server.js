@@ -581,6 +581,35 @@ app.post('/kayit-ol', async (req, res) => {
     }
 });
 
+app.post('/giris', (req, res) => {
+    try {
+        const { ogrenciNo, sifre } = req.body;
+
+        // Gelen veriyi her ihtimale karşı temizle ve metne çevir
+        const arananNo = ogrenciNo ? ogrenciNo.toString().trim() : "";
+        const arananSifre = sifre ? sifre.toString().trim() : "";
+
+        console.log(`🔑 Giriş denemesi: No: ${arananNo}, Sifre: ${arananSifre}`);
+
+        // Veritabanında ara
+        const kullanici = veritabani.ogrenciler.find(o => 
+            (o.ogrenciNo ? o.ogrenciNo.toString().trim() : "") === arananNo && 
+            (o.sifre ? o.sifre.toString().trim() : "") === arananSifre
+        );
+
+        if (kullanici) {
+            console.log("✅ Giriş başarılı:", kullanici.ad);
+            res.json({ basarili: true, ogrenci: kullanici });
+        } else {
+            console.log("❌ Giriş başarısız: Bilgiler eşleşmedi.");
+            res.status(401).json({ basarili: false, mesaj: "Hatalı Numara veya Şifre!" });
+        }
+    } catch (err) {
+        console.error("Giriş Hatası:", err);
+        res.status(500).json({ basarili: false, mesaj: "Sunucu hatası." });
+    }
+});
+
 app.post('/admin-login', async (req, res) => {
     const { kullaniciAdi, sifre } = req.body;
     const snapshot = await ref.child("adminAyarlari").once("value");
@@ -596,4 +625,5 @@ app.post('/yemekhane-sifirla', async (req, res) => {
 });
 
 app.listen(PORT, '0.0.0.0', () => { console.log(`🚀 Port: ${PORT}`); });
+
 
