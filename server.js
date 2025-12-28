@@ -532,17 +532,45 @@ app.delete('/izinli-numara-sil/:id', async (req, res) => {
 
 app.post('/kayit-ol', async (req, res) => {
     const { ogrenciNo, email, tel, sifre } = req.body;
-    const izinli = veritabani.izinliNumaralar.find(n => n.numara === ogrenciNo);
-    if (!izinli) return res.status(400).json({ basarili: false, mesaj: "İzniniz bulunmuyor!" });
 
-    const yeni = {
-        id: Date.now(), ogrenciNo, email, tel, sifre, ad: izinli.ad, tip: izinli.tip,
-        sinif: izinli.sinif || "-", oda: izinli.oda || "-", kartId: izinli.kartId || "",
-        durum: "DISARIDA", etutDurumu: "YOK", kayitliMi: true
+    // 1. Önce Admin panelindeki "İzinli Numaralar" listesinde bu öğrenciyi bul
+    const izinliBilgisi = veritabani.izinliNumaralar.find(n => n.numara === ogrenciNo);
+
+    if (!izinliBilgisi) {
+        return res.status(400).json({ 
+            basarili: false, 
+            mesaj: "Bu numara sistemde tanımlı değil! Lütfen idareye başvurun." 
+        });
+    }
+
+    // 2. Zaten kayıtlı mı kontrol et (Mükerrer kaydı önlemek için)
+    const zatenKayitli = veritabani.ogrenciler.find(o => o.ogrenciNo === ogrenciNo);
+    if (zatenKayitli) {
+        return res.status(400).json({ basarili: false, mesaj: "Bu numara ile zaten kayıt olunmuş!" });
+    }
+
+    // 3. Kullanıcıyı oluştururken Admin'in tanımladığı KART ID ve TİP bilgilerini kopyala
+    const yeniKullanici = {
+        id: Date.now(),
+        ogrenciNo,
+        email,
+        tel,
+        sifre,
+        ad: izinliBilgisi.ad,
+        tip: izinliBilgisi.tip || "YURTÇU",
+        sinif: izinliBilgisi.sinif || "-",
+        oda: izinliBilgisi.oda || "-",
+        // ✨ İŞTE ÇÖZÜM BURASI: Admin panelinde girilen kartId artık profile işleniyor
+        kartId: izinliBilgisi.kartId || "", 
+        durum: "DISARIDA",
+        etutDurumu: "YOK",
+        kayitliMi: true
     };
-    veritabani.ogrenciler.push(yeni);
+
+    veritabani.ogrenciler.push(yeniKullanici);
     await verileriKaydet();
-    res.json({ basarili: true });
+
+    res.json({ basarili: true, mesaj: "Kayıt başarılı! Giriş yapabilirsiniz." });
 });
 
 app.post('/admin-login', async (req, res) => {
@@ -560,3 +588,4 @@ app.post('/yemekhane-sifirla', async (req, res) => {
 });
 
 app.listen(PORT, '0.0.0.0', () => { console.log(`🚀 Port: ${PORT}`); });
+
