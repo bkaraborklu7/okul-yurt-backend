@@ -429,32 +429,77 @@ app.post('/yemekhane-kart', async (req, res) => {
 
 app.post('/yoklama-kart', async (req, res) => {
     const { kartId, kapiKodu } = req.body;
+    
+    // Öğrenciyi kartId üzerinden bul
     const kisi = veritabani.ogrenciler.find(o => o.kartId === kartId);
     if (!kisi) return res.status(404).json({ basarili: false, mesaj: "Kart Kayıtlı Değil!" });
 
-    if (kapiKodu && kapiKodu.startsWith("YURT_") && kisi.tip === "EVCİ") {
-        return res.status(403).json({ basarili: false, mesaj: "Evci girişi yasak!" });
-    }
+    let yeniDurum = kisi.durum; // Varsayılan mevcut durum
+    let mesaj = "";
 
-    let yeniDurum = (kisi.durum === "YURTTA") ? "DISARIDA" : "YURTTA";
-    let mesaj = yeniDurum === "YURTTA" ? `Hoşgeldin ${kisi.ad}` : "Güle Güle";
-
-    if (yeniDurum === "DISARIDA") {
-        const izin = veritabani.izinTalepleri.find(t => t.ogrenciId == kisi.id && t.durum === "ONAYLANDI");
-        if (izin) { 
-            yeniDurum = "IZINLI"; 
-            mesaj = "İzinli Çıkış Yapıldı"; 
-            izin.durum = "KULLANILDI"; 
+    // ==================================================================
+    // 1. ANA GİRİŞ-ÇIKIŞ KAPISI MANTIĞI
+    // ==================================================================
+    if (kapiKodu === "ANA_GIRIS") {
+        if (kisi.durum === "DISARIDA" || kisi.durum === "IZINLI") {
+            yeniDurum = "OKULDA";
+            mesaj = `Okula Giriş Yapıldı. Hoşgeldin ${kisi.ad}`;
+        } else {
+            // Okuldan çıkarken izin kontrolü yap
+            const izin = veritabani.izinTalepleri.find(t => t.ogrenciId == kisi.id && t.durum === "ONAYLANDI");
+            if (izin) {
+                yeniDurum = "IZINLI";
+                mesaj = "İzinli Çıkış Yapıldı";
+                izin.durum = "KULLANILDI";
+            } else {
+                yeniDurum = "DISARIDA";
+                mesaj = "Okuldan Çıkış Yapıldı. Güle Güle";
+            }
         }
     }
 
+    // ==================================================================
+    // 2. YURT BİNASI GİRİŞ-ÇIKIŞ MANTIĞI
+    // ==================================================================
+    else if (kapiKodu === "YURT_KAPI") {
+        if (kisi.tip === "EVCİ") {
+            return res.status(403).json({ basarili: false, mesaj: "Evci öğrenciler yurda giremez!" });
+        }
+
+        if (kisi.durum === "YURTTA") {
+            yeniDurum = "OKULDA"; // Yurttan çıktı, okul bahçesine geçti
+            mesaj = "Yurttan Çıkış Yapıldı";
+        } else {
+            yeniDurum = "YURTTA";
+            mesaj = "Yurda Giriş Yapıldı";
+        }
+    }
+
+    // ==================================================================
+    // 3. ETÜT SALONU YOKLAMA MANTIĞI
+    // ==================================================================
+    else if (kapiKodu === "ETUT_KAPI") {
+        if (kisi.tip !== "YURTÇU") {
+            return res.status(403).json({ basarili: false, mesaj: "Sadece yurtçu öğrenciler etüde girebilir." });
+        }
+        
+        kisi.etutDurumu = "VAR";
+        yeniDurum = "ETÜTTE"; // Durumu etütte olarak güncelle
+        mesaj = "📚 Etüt Yoklaması Alındı";
+    }
+
+    // ==================================================================
+    // KAYIT VE YANIT
+    // ==================================================================
     kisi.durum = yeniDurum;
+    
     veritabani.hareketler.unshift({
         ogrenciId: kisi.id,
         isim: kisi.ad,
         tip: kisi.tip,
         durum_yeni: yeniDurum,
         mesaj: mesaj,
+        kapi: kapiKodu,
         zaman: new Date().toLocaleTimeString("tr-TR"),
         timestamp: Date.now()
     });
@@ -625,5 +670,6 @@ app.post('/yemekhane-sifirla', async (req, res) => {
 });
 
 app.listen(PORT, '0.0.0.0', () => { console.log(`🚀 Port: ${PORT}`); });
+
 
 
