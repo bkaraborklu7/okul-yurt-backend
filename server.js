@@ -160,7 +160,7 @@
 //     const { ogrenciNo, email, tel, sifre } = req.body;
 
 //     // 1. Önce bu numara "izinli numaralar" listesinde hangi tiple kayıtlı?
-//     const izinliBilgisi = veritabani.izinliNumaralar.find(n => n.numara === ogrenciNo);
+//     const izinliBilgisi = veritabani.izinliNumaralar.find(n => n.numara.toString() === ogrenciNo.toString());
 
 //     if (!izinliBilgisi) {
 //         return res.status(400).json({ basarili: false, mesaj: "Bu numara sistemde tanımlı değil!" });
@@ -588,4 +588,5 @@ app.post('/yemekhane-sifirla', async (req, res) => {
 });
 
 app.listen(PORT, '0.0.0.0', () => { console.log(`🚀 Port: ${PORT}`); });
+
 
