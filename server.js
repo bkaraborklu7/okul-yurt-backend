@@ -195,6 +195,8 @@ app.post('/yoklama-kart', async (req, res) => {
     
     const kisi = veritabani.ogrenciler.find(o => o.kartId === kartId);
     if (!kisi) return res.status(404).json({ basarili: false, mesaj: "Kart Kayıtlı Değil!" });
+    const bugun = new Date().toLocaleDateString("tr-TR");
+    const suan = new Date().toLocaleTimeString("tr-TR");
 
     let yeniDurum = kisi.durum;
     let mesaj = "";
@@ -231,9 +233,6 @@ else if (kapiKodu === "ETUT_KAPI") {
     mesaj = "Etüt Yoklaması Alındı";
 
     // KALICI KAYIT EKLEME:
-    const bugun = new Date().toLocaleDateString("tr-TR");
-    const suan = new Date().toLocaleTimeString("tr-TR");
-    
     veritabani.etutKayitlari.unshift({
         ad: kisi.ad,
         ogrenciNo: kisi.ogrenciNo,
@@ -388,6 +387,7 @@ app.post('/belletmen-guncelle', async (req, res) => {
     await verileriKaydet();
     res.json({ basarili: true });
 });
+
 
 
 
