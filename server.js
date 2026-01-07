@@ -3,6 +3,36 @@ const cors = require('cors');
 const admin = require("firebase-admin");
 
 // ==================================================================
+//  YAPILANDIRMA VE BAĞLANTI
+// ==================================================================
+
+const serviceAccount = JSON.parse(process.env.FIREBASE_CONFIG);
+
+admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+    databaseURL: "https://okul-yurt-admin-65dd6-default-rtdb.europe-west1.firebasedatabase.app"
+});
+
+const db = admin.database();
+const ref = db.ref("okul_yurt_verileri");
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+app.use(express.json());
+app.use(cors());
+
+// Global bellek değişkeni
+let veritabani = {
+    hareketler: [],
+    izinTalepleri: [],
+    izinliNumaralar: [],
+    ogrenciler: [],
+    belletmenler: [],
+    yemekhaneKayitlari: [],
+    etutKayitlari: []
+};
+// ==================================================================
 //  GOOGLE İLE DOĞRULAMA KODU GÖNDERME
 // ==================================================================
 let dogrulamaKodlari = {}; 
@@ -74,37 +104,6 @@ async function googleMailGonder(aliciEmail, konu, icerikHtml) {
         return false;
     }
 }
-// ==================================================================
-//  YAPILANDIRMA VE BAĞLANTI
-// ==================================================================
-
-const serviceAccount = JSON.parse(process.env.FIREBASE_CONFIG);
-
-admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-    databaseURL: "https://okul-yurt-admin-65dd6-default-rtdb.europe-west1.firebasedatabase.app"
-});
-
-const db = admin.database();
-const ref = db.ref("okul_yurt_verileri");
-
-const app = express();
-const PORT = process.env.PORT || 3000;
-
-app.use(express.json());
-app.use(cors());
-
-// Global bellek değişkeni
-let veritabani = {
-    hareketler: [],
-    izinTalepleri: [],
-    izinliNumaralar: [],
-    ogrenciler: [],
-    belletmenler: [],
-    yemekhaneKayitlari: [],
-    etutKayitlari: []
-};
-
 // ==================================================================
 //  VERİ SENKRONİZASYON FONKSİYONLARI
 // ==================================================================
@@ -392,3 +391,4 @@ app.post('/belletmen-guncelle', async (req, res) => {
     await verileriKaydet();
     res.json({ basarili: true });
 });
+
