@@ -184,7 +184,7 @@ app.post('/yemekhane-kart', async (req, res) => {
         if (kayit) {
             kayit.cikisSaati = suan;
             sinif: kisi.sinif || "-",
-            kayit.eylem="Çıkış";
+            // kayit.eylem="Çıkış";
             await verileriKaydet();
             return res.json({ basarili: true, mesaj: `Güle güle, ${kisi.ad}!` });
         }
@@ -254,7 +254,7 @@ else if (kapiKodu === "ETUT_KAPI") {
         sinif: kisi.sinif|| "-",
         tarih: bugun,
         girisSaati: suan,
-        eylem:"Giriş"
+        // eylem:"Giriş"
     });
 } 
 else if (kapiKodu === "YEMEKHANE_CIKIS") {
@@ -266,7 +266,7 @@ else if (kapiKodu === "YEMEKHANE_CIKIS") {
         sinif: kisi.sinif|| "-",
         tarih: bugun,
         cikisSaati: suan,
-        eylem:"Çıkış"
+        // eylem:"Çıkış"
     });
 }
 
@@ -415,6 +415,7 @@ app.post('/belletmen-guncelle', async (req, res) => {
     await verileriKaydet();
     res.json({ basarili: true });
 });
+
 
 
 
