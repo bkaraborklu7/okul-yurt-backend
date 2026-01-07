@@ -250,7 +250,7 @@ else if (kapiKodu === "ETUT_KAPI") {
         ogrenciNo: kisi.ogrenciNo,
         tarih: bugun,
         saat: suan,
-        eylem:"Giris"
+        eylem:"Giriş"
     });
 } 
 else if (kapiKodu === "YEMEKHANE_CIKIS") {
@@ -261,7 +261,7 @@ else if (kapiKodu === "YEMEKHANE_CIKIS") {
         ogrenciNo: kisi.ogrenciNo,
         tarih: bugun,
         saat: suan,
-        eylem:"Cıkıs"
+        eylem:"Çıkış"
     });
 }
 
@@ -410,6 +410,7 @@ app.post('/belletmen-guncelle', async (req, res) => {
     await verileriKaydet();
     res.json({ basarili: true });
 });
+
 
 
 
