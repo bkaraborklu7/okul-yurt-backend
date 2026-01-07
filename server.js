@@ -252,7 +252,8 @@ else if (kapiKodu === "ETUT_KAPI") {
         durum_yeni: yeniDurum,
         mesaj: mesaj,
         kapi: kapiKodu,
-        zaman: new Date().toLocaleTimeString("tr-TR"),
+        zaman: `${bugun} ${suan}`,
+        tarih: bugun,
         timestamp: Date.now()
     });
 
@@ -387,5 +388,6 @@ app.post('/belletmen-guncelle', async (req, res) => {
     await verileriKaydet();
     res.json({ basarili: true });
 });
+
 
 
