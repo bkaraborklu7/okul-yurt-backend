@@ -154,41 +154,57 @@ app.get('/etut-listesi', (req, res) => res.json(veritabani.etutKayitlari));
 // ==================================================================
 
 app.post('/yemekhane-kart', async (req, res) => {
-    const { kartId, kapiKodu } = req.body;
-    await verileriYukle(); // Güncel listeyi al
+    try {
+        const { kartId, kapiKodu } = req.body;
+        await verileriYukle(); // Güncel listeyi al
 
-    const kisi = veritabani.ogrenciler.find(o => o.kartId === kartId);
-    if (!kisi) return res.status(404).json({ basarili: false, mesaj: "Tanımsız Kart!" });
+        const kisi = veritabani.ogrenciler.find(o => o.kartId === kartId);
+        if (!kisi) return res.status(404).json({ basarili: false, mesaj: "Tanımsız Kart!" });
 
-    const bugun = new Date().toLocaleDateString("tr-TR");
-    const suan = new Date().toLocaleTimeString("tr-TR");
+        const bugun = new Date().toLocaleDateString("tr-TR");
+        const suan = new Date().toLocaleTimeString("tr-TR");
 
-    if (kapiKodu === "YEMEKHANE_GIRIS") {
-        veritabani.yemekhaneKayitlari.unshift({
-            ogrenciNo: kisi.ogrenciNo,
-            isim: kisi.ad,
-            tip: kisi.tip || "YURTÇU",
-            sinif: kisi.sinif || "-",
-            girisSaati: suan,
-            cikisSaati: "--:--",
-            tarih: bugun
-        });
-        await verileriKaydet();
-        return res.json({ basarili: true, mesaj: `Afiyet olsun, ${kisi.ad}!` });
-    } 
-    
-    if (kapiKodu === "YEMEKHANE_CIKIS") {
-        const kayit = veritabani.yemekhaneKayitlari.find(k => 
-            k.ogrenciNo.toString() === kisi.ogrenciNo.toString() && k.tarih === bugun && k.cikisSaati === "--:--"
-        );
-        if (kayit) {
-            kayit.cikisSaati = suan;
-            sinif: kisi.sinif || "-",
-            // kayit.eylem="Çıkış";
+        // --- ÇIKIŞ İŞLEMİ ---
+        if (kapiKodu === "YEMEKHANE_CIKIS") {
+            const kayit = veritabani.yemekhaneKayitlari.find(k => 
+                k.ogrenciNo.toString() === kisi.ogrenciNo.toString() && 
+                k.tarih === bugun && 
+                k.cikisSaati === "--:--"
+            );
+
+            if (kayit) {
+                kayit.cikisSaati = suan;
+                // Eğer sınıfta bir değişiklik varsa güncelleyebiliriz:
+                kayit.sinif = kisi.sinif || "-"; 
+                
+                await verileriKaydet();
+                return res.json({ basarili: true, mesaj: `Güle güle, ${kisi.ad}!` });
+            } else {
+                return res.status(400).json({ basarili: false, mesaj: "Giriş kaydı bulunamadı!" });
+            }
+        } 
+        
+        // --- GİRİŞ İŞLEMİ ---
+        else if (kapiKodu === "YEMEKHANE_GIRIS") {
+            veritabani.yemekhaneKayitlari.unshift({
+                ogrenciNo: kisi.ogrenciNo,
+                isim: kisi.ad,
+                tip: kisi.tip || "YURTÇU",
+                sinif: kisi.sinif || "-",
+                girisSaati: suan,
+                cikisSaati: "--:--",
+                tarih: bugun
+            });
             await verileriKaydet();
-            return res.json({ basarili: true, mesaj: `Güle güle, ${kisi.ad}!` });
+            return res.json({ basarili: true, mesaj: `Afiyet olsun, ${kisi.ad}!` });
         }
-        return res.status(400).json({ basarili: false, mesaj: "Giriş kaydı bulunamadı!" });
+
+        // Kapı kodu ikisi de değilse
+        return res.status(400).json({ basarili: false, mesaj: "Geçersiz kapı kodu!" });
+
+    } catch (error) {
+        console.error("Yemekhane Hatası:", error);
+        return res.status(500).json({ basarili: false, mesaj: "Sunucu hatası oluştu." });
     }
 });
 
@@ -244,31 +260,31 @@ else if (kapiKodu === "ETUT_KAPI") {
         saat: suan
     });
 }
-    //4. YEMEKHANE KAPILARI
-    if (kapiKodu === "YEMEKHANE_GIRIS") {
-    yeniDurum = "YEMEKHANEDE";
-    mesaj = `${kisi.ad} Yemekhaneye Giriş Yaptı.`;
-        veritabani.yemekhaneKayitlari.unshift({
-        ad: kisi.ad,
-        ogrenciNo: kisi.ogrenciNo,
-        sinif: kisi.sinif|| "-",
-        tarih: bugun,
-        girisSaati: suan,
-        // eylem:"Giriş"
-    });
-} 
-else if (kapiKodu === "YEMEKHANE_CIKIS") {
-    yeniDurum = "OKULDA";
-    mesaj = `${kisi.ad} Yemekhaneden Çıktı.`;
-     veritabani.yemekhaneKayitlari.unshift({
-        ad: kisi.ad,
-        ogrenciNo: kisi.ogrenciNo,
-        sinif: kisi.sinif|| "-",
-        tarih: bugun,
-        cikisSaati: suan,
-        // eylem:"Çıkış"
-    });
-}
+//     //4. YEMEKHANE KAPILARI
+//     if (kapiKodu === "YEMEKHANE_GIRIS") {
+//     yeniDurum = "YEMEKHANEDE";
+//     mesaj = `${kisi.ad} Yemekhaneye Giriş Yaptı.`;
+//         veritabani.yemekhaneKayitlari.unshift({
+//         ad: kisi.ad,
+//         ogrenciNo: kisi.ogrenciNo,
+//         sinif: kisi.sinif|| "-",
+//         tarih: bugun,
+//         girisSaati: suan,
+//         // eylem:"Giriş"
+//     });
+// } 
+// else if (kapiKodu === "YEMEKHANE_CIKIS") {
+//     yeniDurum = "OKULDA";
+//     mesaj = `${kisi.ad} Yemekhaneden Çıktı.`;
+//      veritabani.yemekhaneKayitlari.unshift({
+//         ad: kisi.ad,
+//         ogrenciNo: kisi.ogrenciNo,
+//         sinif: kisi.sinif|| "-",
+//         tarih: bugun,
+//         cikisSaati: suan,
+//         // eylem:"Çıkış"
+//     });
+// }
 
     // Sonuçları Kaydet
     kisi.durum = yeniDurum;
@@ -415,6 +431,7 @@ app.post('/belletmen-guncelle', async (req, res) => {
     await verileriKaydet();
     res.json({ basarili: true });
 });
+
 
 
 
