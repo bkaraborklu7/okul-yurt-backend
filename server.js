@@ -245,10 +245,24 @@ else if (kapiKodu === "ETUT_KAPI") {
     if (kapiKodu === "YEMEKHANE_GIRIS") {
     yeniDurum = "YEMEKHANEDE";
     mesaj = `${kisi.ad} Yemekhaneye Giriş Yaptı.`;
+        veritabani.yemekhaneKayitlari.unshift({
+        ad: kisi.ad,
+        ogrenciNo: kisi.ogrenciNo,
+        tarih: bugun,
+        saat: suan,
+        eylem:"Giris"
+    });
 } 
 else if (kapiKodu === "YEMEKHANE_CIKIS") {
     yeniDurum = "OKULDA";
     mesaj = `${kisi.ad} Yemekhaneden Çıktı.`;
+     veritabani.yemekhaneKayitlari.unshift({
+        ad: kisi.ad,
+        ogrenciNo: kisi.ogrenciNo,
+        tarih: bugun,
+        saat: suan,
+        eylem:"Cıkıs"
+    });
 }
 
     // Sonuçları Kaydet
@@ -396,6 +410,7 @@ app.post('/belletmen-guncelle', async (req, res) => {
     await verileriKaydet();
     res.json({ basarili: true });
 });
+
 
 
 
