@@ -3,6 +3,78 @@ const cors = require('cors');
 const admin = require("firebase-admin");
 
 // ==================================================================
+//  GOOGLE İLE DOĞRULAMA KODU GÖNDERME
+// ==================================================================
+let dogrulamaKodlari = {}; 
+
+// 1. AŞAMA: KOD ÜRET VE GOOGLE ÜZERİNDEN GÖNDER
+app.post('/sifre-kodu-gonder', async (req, res) => {
+    const { email } = req.body;
+    
+    // Öğrenciyi email üzerinden bul (ogrenciler senin ana dizinin olmalı)
+    const ogrenci = ogrenciler.find(o => o.email === email);
+    
+    if (!ogrenci) {
+        return res.status(404).json({ basarili: false, mesaj: "Bu e-posta adresiyle kayıtlı kullanıcı bulunamadı." });
+    }
+
+    // 4 haneli kod üret ve kaydet
+    const kod = Math.floor(1000 + Math.random() * 9000).toString();
+    dogrulamaKodlari[email] = kod;
+
+    // Senin bulduğun fonksiyonu çağırıyoruz
+    const mailGonderildi = await googleMailGonder(
+        email, 
+        "Yurt Sistemi Şifre Sıfırlama", 
+        `Merhaba, şifre sıfırlama kodunuz: ${kod}. Bu kodu kimseyle paylaşmayın.`
+    );
+
+    if (mailGonderildi) {
+        res.json({ basarili: true, mesaj: "Doğrulama kodu e-postanıza gönderildi!" });
+    } else {
+        res.status(500).json({ basarili: false, mesaj: "Mail gönderilirken bir sorun oluştu." });
+    }
+});
+
+// 2. AŞAMA: KODU ONAYLA VE ŞİFREYİ DEĞİŞTİR
+app.post('/sifre-sifirla', (req, res) => {
+    const { email, kod, yeniSifre } = req.body;
+
+    // Kod ve E-posta doğrulaması
+    if (dogrulamaKodlari[email] && dogrulamaKodlari[email] === kod.toString()) {
+        const ogrenciIndex = ogrenciler.findIndex(o => o.email === email);
+        
+        if (ogrenciIndex !== -1) {
+            ogrenciler[ogrenciIndex].sifre = yeniSifre; // Şifreyi güncelle
+            delete dogrulamaKodlari[email]; // Kodu sil
+            return res.json({ basarili: true, mesaj: "Şifreniz başarıyla güncellendi!" });
+        }
+    }
+
+    res.status(400).json({ basarili: false, mesaj: "Kod hatalı veya süresi dolmuş." });
+});
+async function googleMailGonder(aliciEmail, konu, icerikHtml) {
+    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzNMTXMkyQNpAcdk8V5jNPDn97XmU2nflYO84moSUdVgmdoSaY84sWnNX6TxygvcW7cRg/exec";
+    
+    try {
+        const response = await fetch(GOOGLE_SCRIPT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                email: aliciEmail,
+                subject: konu,
+                body: icerikHtml
+            })
+        });
+
+        const sonuc = await response.json();
+        return sonuc.status === 'success';
+    } catch (error) {
+        console.error(" Fetch Bağlantı Hatası:", error);
+        return false;
+    }
+}
+// ==================================================================
 //  YAPILANDIRMA VE BAĞLANTI
 // ==================================================================
 
@@ -36,11 +108,6 @@ let veritabani = {
 // ==================================================================
 //  VERİ SENKRONİZASYON FONKSİYONLARI
 // ==================================================================
-
-/**
- * Firebase'deki en güncel veriyi RAM'e (veritabani değişkenine) çeker.
- * Çoklu bilgisayar kullanımında veri hatasını engellemek için kritik POST'larda çağrılır.
- */
 async function verileriYukle() {
     try {
         const snapshot = await ref.once("value");
@@ -161,7 +228,6 @@ app.post('/yoklama-kart', async (req, res) => {
         mesaj = (yeniDurum === "YURTTA") ? "Yurda Giriş Yapıldı" : "Yurttan Çıkış Yapıldı";
     }
     // 3. ETÜT KAPISI MANTIĞI
-    // 3. ETÜT KAPISI MANTIĞI (Revize Edildi)
 else if (kapiKodu === "ETUT_KAPI") {
     if (kisi.tip !== "YURTÇU") return res.status(403).json({ basarili: false, mesaj: "Sadece yurtçular etüde girebilir." });
     
@@ -326,10 +392,3 @@ app.post('/belletmen-guncelle', async (req, res) => {
     await verileriKaydet();
     res.json({ basarili: true });
 });
-
-
-
-
-
-
-
