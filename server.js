@@ -168,6 +168,7 @@ app.post('/yemekhane-kart', async (req, res) => {
             ogrenciNo: kisi.ogrenciNo,
             isim: kisi.ad,
             tip: kisi.tip || "YURTÇU",
+            sinif: kisi.sinif || "-",
             girisSaati: suan,
             cikisSaati: "--:--",
             tarih: bugun
@@ -182,6 +183,7 @@ app.post('/yemekhane-kart', async (req, res) => {
         );
         if (kayit) {
             kayit.cikisSaati = suan;
+            sinif: kisi.sinif || "-",
             kayit.eylem="Çıkış";
             await verileriKaydet();
             return res.json({ basarili: true, mesaj: `Güle güle, ${kisi.ad}!` });
@@ -411,6 +413,7 @@ app.post('/belletmen-guncelle', async (req, res) => {
     await verileriKaydet();
     res.json({ basarili: true });
 });
+
 
 
 
