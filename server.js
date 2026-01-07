@@ -241,6 +241,15 @@ else if (kapiKodu === "ETUT_KAPI") {
         saat: suan
     });
 }
+    //4. YEMEKHANE KAPILARI
+    if (kapiKodu === "YEMEKHANE_GIRIS") {
+    yeniDurum = "YEMEKHANEDE";
+    mesaj = `${kisi.ad} Yemekhaneye Giriş Yaptı.`;
+} 
+else if (kapiKodu === "YEMEKHANE_CIKIS") {
+    yeniDurum = "OKULDA";
+    mesaj = `${kisi.ad} Yemekhaneden Çıktı.`;
+}
 
     // Sonuçları Kaydet
     kisi.durum = yeniDurum;
@@ -387,6 +396,7 @@ app.post('/belletmen-guncelle', async (req, res) => {
     await verileriKaydet();
     res.json({ basarili: true });
 });
+
 
 
 
