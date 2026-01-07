@@ -251,8 +251,9 @@ else if (kapiKodu === "ETUT_KAPI") {
         veritabani.yemekhaneKayitlari.unshift({
         ad: kisi.ad,
         ogrenciNo: kisi.ogrenciNo,
+        sinif: kisi.sinif|| "-"
         tarih: bugun,
-        saat: suan,
+        girisSaati: suan,
         eylem:"Giriş"
     });
 } 
@@ -262,8 +263,9 @@ else if (kapiKodu === "YEMEKHANE_CIKIS") {
      veritabani.yemekhaneKayitlari.unshift({
         ad: kisi.ad,
         ogrenciNo: kisi.ogrenciNo,
+        sinif: kisi.sinif|| "-"
         tarih: bugun,
-        saat: suan,
+        cikisSaati: suan,
         eylem:"Çıkış"
     });
 }
@@ -413,6 +415,7 @@ app.post('/belletmen-guncelle', async (req, res) => {
     await verileriKaydet();
     res.json({ basarili: true });
 });
+
 
 
 
