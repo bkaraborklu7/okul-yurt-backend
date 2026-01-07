@@ -40,14 +40,10 @@ let dogrulamaKodlari = {};
 // 1. AŞAMA: KOD ÜRET VE GOOGLE ÜZERİNDEN GÖNDER
 app.post('/sifre-kodu-gonder', async (req, res) => {
     const { email } = req.body;
-    
-    // Öğrenciyi email üzerinden bul (ogrenciler senin ana dizinin olmalı)
-    const ogrenci = ogrenciler.find(o => o.email === email);
-    
+    const ogrenci = veritabani.ogrenciler.find(o => o.email === email);
     if (!ogrenci) {
         return res.status(404).json({ basarili: false, mesaj: "Bu e-posta adresiyle kayıtlı kullanıcı bulunamadı." });
     }
-
     // 4 haneli kod üret ve kaydet
     const kod = Math.floor(1000 + Math.random() * 9000).toString();
     dogrulamaKodlari[email] = kod;
@@ -72,10 +68,10 @@ app.post('/sifre-sifirla', (req, res) => {
 
     // Kod ve E-posta doğrulaması
     if (dogrulamaKodlari[email] && dogrulamaKodlari[email] === kod.toString()) {
-        const ogrenciIndex = ogrenciler.findIndex(o => o.email === email);
+        const ogrenciIndex = veritabani.ogrenciler.findIndex(o => o.email === email);
         
         if (ogrenciIndex !== -1) {
-            ogrenciler[ogrenciIndex].sifre = yeniSifre; // Şifreyi güncelle
+            veritabani.ogrenciler[ogrenciIndex].sifre = yeniSifre; // Şifreyi güncelle
             delete dogrulamaKodlari[email]; // Kodu sil
             return res.json({ basarili: true, mesaj: "Şifreniz başarıyla güncellendi!" });
         }
@@ -391,4 +387,5 @@ app.post('/belletmen-guncelle', async (req, res) => {
     await verileriKaydet();
     res.json({ basarili: true });
 });
+
 
