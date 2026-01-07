@@ -263,32 +263,6 @@ else if (kapiKodu === "ETUT_KAPI") {
         saat: suan
     });
 }
-//     //4. YEMEKHANE KAPILARI
-//     if (kapiKodu === "YEMEKHANE_GIRIS") {
-//     yeniDurum = "YEMEKHANEDE";
-//     mesaj = `${kisi.ad} Yemekhaneye Giriş Yaptı.`;
-//         veritabani.yemekhaneKayitlari.unshift({
-//         ad: kisi.ad,
-//         ogrenciNo: kisi.ogrenciNo,
-//         sinif: kisi.sinif|| "-",
-//         tarih: bugun,
-//         girisSaati: suan,
-//         // eylem:"Giriş"
-//     });
-// } 
-// else if (kapiKodu === "YEMEKHANE_CIKIS") {
-//     yeniDurum = "OKULDA";
-//     mesaj = `${kisi.ad} Yemekhaneden Çıktı.`;
-//      veritabani.yemekhaneKayitlari.unshift({
-//         ad: kisi.ad,
-//         ogrenciNo: kisi.ogrenciNo,
-//         sinif: kisi.sinif|| "-",
-//         tarih: bugun,
-//         cikisSaati: suan,
-//         // eylem:"Çıkış"
-//     });
-// }
-
     // Sonuçları Kaydet
     kisi.durum = yeniDurum;
     veritabani.hareketler.unshift({
@@ -325,16 +299,24 @@ app.post('/izin-iste', async (req, res) => {
     res.json({ basarili: true });
 });
 
-app.post('/izin-islem', async (req, res) => {
-    const { talepId, islem } = req.body;
-    await verileriYukle();
-    const talep = veritabani.izinTalepleri.find(t => t.id == talepId);
-    if (talep) {
-        talep.durum = (islem === "ONAY") ? "ONAYLANDI" : "REDDEDILDI";
-        await verileriKaydet();
-        res.json({ basarili: true });
-    } else {
-        res.status(404).json({ basarili: false, mesaj: "Talep bulunamadı." });
+app.post('/izin-onay', async (req, res) => {
+    try {
+        const { id, islem } = req.body;
+        await verileriYukle();
+
+        // İzin talebini ID üzerinden bul
+        const talep = veritabani.izinTalepleri.find(t => t.id.toString() === id.toString());
+
+        if (talep) {
+            talep.durum = islem === 'ONAY' ? 'ONAYLANDI' : 'REDDEDILDI';
+            await verileriKaydet();
+            return res.json({ basarili: true, mesaj: "İşlem tamamlandı." });
+        } else {
+            return res.status(404).json({ basarili: false, mesaj: "Talep bulunamadı." });
+        }
+    } catch (error) {
+        console.error("İzin onay hatası:", error);
+        res.status(500).json({ basarili: false, mesaj: "Sunucu hatası." });
     }
 });
 
@@ -434,6 +416,7 @@ app.post('/belletmen-guncelle', async (req, res) => {
     await verileriKaydet();
     res.json({ basarili: true });
 });
+
 
 
 
