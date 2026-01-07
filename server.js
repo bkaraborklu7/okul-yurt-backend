@@ -182,6 +182,7 @@ app.post('/yemekhane-kart', async (req, res) => {
         );
         if (kayit) {
             kayit.cikisSaati = suan;
+            kayit.eylem="Çıkış";
             await verileriKaydet();
             return res.json({ basarili: true, mesaj: `Güle güle, ${kisi.ad}!` });
         }
@@ -410,6 +411,7 @@ app.post('/belletmen-guncelle', async (req, res) => {
     await verileriKaydet();
     res.json({ basarili: true });
 });
+
 
 
 
