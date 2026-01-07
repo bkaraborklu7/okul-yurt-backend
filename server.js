@@ -187,6 +187,9 @@ app.post('/yemekhane-kart', async (req, res) => {
         // --- GİRİŞ İŞLEMİ ---
         else if (kapiKodu === "YEMEKHANE_GIRIS") {
             veritabani.yemekhaneKayitlari.unshift({
+                if (!veritabani.yemekhaneKayitlari) {
+    veritabani.yemekhaneKayitlari = [];
+}
                 ogrenciNo: kisi.ogrenciNo,
                 isim: kisi.ad,
                 tip: kisi.tip || "YURTÇU",
@@ -431,6 +434,7 @@ app.post('/belletmen-guncelle', async (req, res) => {
     await verileriKaydet();
     res.json({ basarili: true });
 });
+
 
 
 
