@@ -30,7 +30,7 @@ let veritabani = {
     ogrenciler: [],
     belletmenler: [],
     yemekhaneKayitlari: [],
-    etutKayitlari[]
+    etutKayitlari: []
 };
 
 // ==================================================================
@@ -326,6 +326,7 @@ app.post('/belletmen-guncelle', async (req, res) => {
     await verileriKaydet();
     res.json({ basarili: true });
 });
+
 
 
 
