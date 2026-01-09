@@ -293,7 +293,8 @@ app.post('/izin-iste', async (req, res) => {
         id: Date.now(),
         ogrenciId,
         isim: ogrenci ? ogrenci.ad : "Bilinmeyen",
-        tur, aciklama, tarih: `${tarihBaslangic}-${tarihBitis}`, durum: "BEKLIYOR"
+        tur, aciklama, tarih: `${tarihBaslangic}-${tarihBitis}`, durum: "BEKLIYOR",
+        gonderilmeTarihi: new Date().toLocaleDateString("tr-TR")
     });
     await verileriKaydet();
     res.json({ basarili: true });
@@ -416,6 +417,7 @@ app.post('/belletmen-guncelle', async (req, res) => {
     await verileriKaydet();
     res.json({ basarili: true });
 });
+
 
 
 
