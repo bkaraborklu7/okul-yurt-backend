@@ -381,11 +381,11 @@ app.post('/admin-login', async (req, res) => {
     else res.status(401).json({ basarili: false });
 });
 app.post('/admin-sifre-guncelle', async (req, res) => {
-    const { yeniKullaniciAdi, yeniSifre } = req.body;
+    const { kullaniciAdi, sifre } = req.body;
     try {
         await ref.child("adminAyarlari").set({
-            kullaniciAdi: yeniKullaniciAdi,
-            sifre: yeniSifre
+            kullaniciAdi: kullaniciAdi,
+            sifre: sifre
         });
         res.json({ basarili: true, mesaj: "Bilgiler güncellendi!" });
     } catch (error) {
@@ -428,5 +428,8 @@ verileriYukle().then(() => {
    app.listen(PORT, '0.0.0.0', () => {
         console.log(`🚀 Sunucu Hazır | Port: ${PORT}`);
     });
+}).catch(err => {
+    console.error("SUNUCU BAŞLATILAMADI:", err);
 });
+
 
