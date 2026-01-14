@@ -128,9 +128,6 @@ async function verileriKaydet() {
         console.error(" Veri Kayıt Hatası:", error);
     }
 }
-
-// Sistem açılışında verileri bir kez yükle ve portu dinlemeye başla
-verileriYukle().then(() => {
  
 // ==================================================================
 //  VERİ ÇEKME (GET) ENDPOINTLERİ
@@ -426,8 +423,10 @@ app.post('/belletmen-guncelle', async (req, res) => {
     await verileriKaydet();
     res.json({ basarili: true });
 });
-
+// Sistem açılışında verileri bir kez yükle ve portu dinlemeye başla
+verileriYukle().then(() => {
    app.listen(PORT, '0.0.0.0', () => {
         console.log(`🚀 Sunucu Hazır | Port: ${PORT}`);
     });
 });
+
