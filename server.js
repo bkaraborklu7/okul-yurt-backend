@@ -131,11 +131,7 @@ async function verileriKaydet() {
 
 // Sistem açılışında verileri bir kez yükle ve portu dinlemeye başla
 verileriYukle().then(() => {
-    app.listen(PORT, '0.0.0.0', () => {
-        console.log(`🚀 Sunucu Hazır | Port: ${PORT}`);
-    });
-});
-
+ 
 // ==================================================================
 //  VERİ ÇEKME (GET) ENDPOINTLERİ
 // ==================================================================
@@ -431,20 +427,7 @@ app.post('/belletmen-guncelle', async (req, res) => {
     res.json({ basarili: true });
 });
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+   app.listen(PORT, '0.0.0.0', () => {
+        console.log(`🚀 Sunucu Hazır | Port: ${PORT}`);
+    });
+});
