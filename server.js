@@ -387,6 +387,19 @@ app.post('/admin-login', async (req, res) => {
     if (kullaniciAdi === adminData.kullaniciAdi && sifre === adminData.sifre) res.json({ basarili: true });
     else res.status(401).json({ basarili: false });
 });
+app.post('/admin-sifre-guncelle', async (req, res) => {
+    const { yeniKullaniciAdi, yeniSifre } = req.body;
+    try {
+        await ref.child("adminAyarlari").set({
+            kullaniciAdi: yeniKullaniciAdi,
+            sifre: yeniSifre
+        });
+        res.json({ basarili: true, mesaj: "Bilgiler güncellendi!" });
+    } catch (error) {
+        res.status(500).json({ basarili: false, mesaj: "Hata oluştu!" });
+    }
+});
+
 
 app.post('/etut-sifirla', async (req, res) => {
     veritabani.ogrenciler.forEach(o => o.etutDurumu = "YOK");
@@ -417,6 +430,7 @@ app.post('/belletmen-guncelle', async (req, res) => {
     await verileriKaydet();
     res.json({ basarili: true });
 });
+
 
 
 
