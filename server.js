@@ -176,6 +176,8 @@ app.post('/yemekhane-kart', async (req, res) => {
                 return res.status(400).json({ basarili: false, mesaj: "Giriş kaydı bulunamadı!" });
             }
             yeniDurum = "OKULDA";
+            kisi.durum= yeniDurum;
+
         } 
         
         // --- GİRİŞ İŞLEMİ ---
@@ -192,7 +194,8 @@ app.post('/yemekhane-kart', async (req, res) => {
                 sinif: kisi.sinif || "-",
                 girisSaati: suan,
                 cikisSaati: "--:--",
-                tarih: bugun
+                tarih: bugun,
+                kisi.durum= yeniDurum
             });
             await verileriKaydet();
             return res.json({ basarili: true, mesaj: `Afiyet olsun, ${kisi.ad}!` });
@@ -434,6 +437,7 @@ verileriYukle().then(() => {
 }).catch(err => {
     console.error("SUNUCU BAŞLATILAMADI:", err);
 });
+
 
 
 
