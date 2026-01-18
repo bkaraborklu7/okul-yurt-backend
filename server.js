@@ -130,6 +130,7 @@ async function verileriKaydet() {
 }
  app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.get('/', (req, res) => res.status(200).send('Sunucu Aktif!'));
 // ==================================================================
 //  VERİ ÇEKME (GET) ENDPOINTLERİ
 // ==================================================================
@@ -152,13 +153,18 @@ app.post('/yemekhane-kart', async (req, res) => {
         const { kartId, kapiKodu } = req.body;
         await verileriYukle(); 
 
-        const kisi = veritabani.ogrenciler.find(o => o.kartId === kartId);
-        if (!kisi) return res.status(404).json({ basarili: false, mesaj: "Tanımsız Kart!" });
+        // find yerine findIndex kullanarak ana listedeki yerini buluyoruz
+        const ogrenciIndex = veritabani.ogrenciler.findIndex(o => o.kartId === kartId);
+        
+        if (ogrenciIndex === -1) {
+            return res.status(404).json({ basarili: false, mesaj: "Tanımsız Kart!" });
+        }
 
+        // kisi'yi yine tanımlıyoruz ama değişiklikleri ogrenciIndex üzerinden yapacağız
+        const kisi = veritabani.ogrenciler[ogrenciIndex];
         const bugun = new Date().toLocaleDateString("tr-TR");
         const suan = new Date().toLocaleTimeString("tr-TR");
 
-        // --- ÇIKIŞ İŞLEMİ ---
         if (kapiKodu === "YEMEKHANE_CIKIS") {
             const kayit = veritabani.yemekhaneKayitlari.find(k => 
                 k.ogrenciNo.toString() === kisi.ogrenciNo.toString() && 
@@ -168,10 +174,9 @@ app.post('/yemekhane-kart', async (req, res) => {
 
             if (kayit) {
                 kayit.cikisSaati = suan;
-                kayit.sinif = kisi.sinif || "-"; 
                 
-                // Durumu OKULDA olarak güncelle
-                kisi.durum = "OKULDA"; 
+                // DOĞRUDAN ANA LİSTEYİ GÜNCELLİYORUZ
+                veritabani.ogrenciler[ogrenciIndex].durum = "OKULDA"; 
                 
                 await verileriKaydet();
                 return res.json({ basarili: true, mesaj: `Güle güle, ${kisi.ad}!` });
@@ -179,15 +184,11 @@ app.post('/yemekhane-kart', async (req, res) => {
                 return res.status(400).json({ basarili: false, mesaj: "Giriş kaydı bulunamadı!" });
             }
         } 
-        
-        // --- GİRİŞ İŞLEMİ ---
         else if (kapiKodu === "YEMEKHANE_GIRIS") {
-            if (!veritabani.yemekhaneKayitlari) {
-                veritabani.yemekhaneKayitlari = [];
-            }
+            if (!veritabani.yemekhaneKayitlari) veritabani.yemekhaneKayitlari = [];
 
-            // Durumu YEMEKHANEDE olarak güncelle
-            kisi.durum = "YEMEKHANEDE";
+            // DOĞRUDAN ANA LİSTEYİ GÜNCELLİYORUZ
+            veritabani.ogrenciler[ogrenciIndex].durum = "YEMEKHANEDE";
 
             veritabani.yemekhaneKayitlari.unshift({
                 ogrenciNo: kisi.ogrenciNo,
@@ -202,9 +203,7 @@ app.post('/yemekhane-kart', async (req, res) => {
             await verileriKaydet();
             return res.json({ basarili: true, mesaj: `Afiyet olsun, ${kisi.ad}!` });
         }
-
         return res.status(400).json({ basarili: false, mesaj: "Geçersiz kapı kodu!" });
-
     } catch (error) {
         console.error("Yemekhane Hatası:", error);
         return res.status(500).json({ basarili: false, mesaj: "Sunucu hatası oluştu." });
@@ -438,6 +437,7 @@ verileriYukle().then(() => {
 }).catch(err => {
     console.error("SUNUCU BAŞLATILAMADI:", err);
 });
+
 
 
 
