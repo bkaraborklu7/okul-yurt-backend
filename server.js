@@ -149,7 +149,7 @@ app.get('/etut-listesi', (req, res) => res.json(veritabani.etutKayitlari));
 app.post('/yemekhane-kart', async (req, res) => {
     try {
         const { kartId, kapiKodu } = req.body;
-        await verileriYukle(); // Güncel listeyi al
+        await verileriYukle(); 
 
         const kisi = veritabani.ogrenciler.find(o => o.kartId === kartId);
         if (!kisi) return res.status(404).json({ basarili: false, mesaj: "Tanımsız Kart!" });
@@ -167,25 +167,26 @@ app.post('/yemekhane-kart', async (req, res) => {
 
             if (kayit) {
                 kayit.cikisSaati = suan;
-                // Eğer sınıfta bir değişiklik varsa güncelleyebiliriz:
                 kayit.sinif = kisi.sinif || "-"; 
+                
+                // Durumu OKULDA olarak güncelle
+                kisi.durum = "OKULDA"; 
                 
                 await verileriKaydet();
                 return res.json({ basarili: true, mesaj: `Güle güle, ${kisi.ad}!` });
             } else {
                 return res.status(400).json({ basarili: false, mesaj: "Giriş kaydı bulunamadı!" });
             }
-            yeniDurum = "OKULDA";
-            kisi.durum= yeniDurum;
-
         } 
         
         // --- GİRİŞ İŞLEMİ ---
         else if (kapiKodu === "YEMEKHANE_GIRIS") {
             if (!veritabani.yemekhaneKayitlari) {
-            veritabani.yemekhaneKayitlari = [];
-             }
-            yeniDurum = "YEMEKHANEDE";
+                veritabani.yemekhaneKayitlari = [];
+            }
+
+            // Durumu YEMEKHANEDE olarak güncelle
+            kisi.durum = "YEMEKHANEDE";
 
             veritabani.yemekhaneKayitlari.unshift({
                 ogrenciNo: kisi.ogrenciNo,
@@ -194,14 +195,13 @@ app.post('/yemekhane-kart', async (req, res) => {
                 sinif: kisi.sinif || "-",
                 girisSaati: suan,
                 cikisSaati: "--:--",
-                tarih: bugun,
-                kisi.durum= yeniDurum
+                tarih: bugun
             });
+
             await verileriKaydet();
             return res.json({ basarili: true, mesaj: `Afiyet olsun, ${kisi.ad}!` });
         }
 
-        // Kapı kodu ikisi de değilse
         return res.status(400).json({ basarili: false, mesaj: "Geçersiz kapı kodu!" });
 
     } catch (error) {
@@ -437,6 +437,7 @@ verileriYukle().then(() => {
 }).catch(err => {
     console.error("SUNUCU BAŞLATILAMADI:", err);
 });
+
 
 
 
