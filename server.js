@@ -163,6 +163,7 @@ app.post('/yemekhane-kart', async (req, res) => {
                 k.ogrenciNo.toString() === kisi.ogrenciNo.toString() && 
                 k.tarih === bugun && 
                 k.cikisSaati === "--:--"
+                yeniDurum = "OKULDA";
             );
 
             if (kayit) {
@@ -182,6 +183,8 @@ app.post('/yemekhane-kart', async (req, res) => {
             if (!veritabani.yemekhaneKayitlari) {
             veritabani.yemekhaneKayitlari = [];
              }
+            yeniDurum = "YEMEKHANEDE";
+
             veritabani.yemekhaneKayitlari.unshift({
                 ogrenciNo: kisi.ogrenciNo,
                 isim: kisi.ad,
@@ -431,5 +434,6 @@ verileriYukle().then(() => {
 }).catch(err => {
     console.error("SUNUCU BAŞLATILAMADI:", err);
 });
+
 
 
