@@ -189,6 +189,7 @@ app.post('/yemekhane-kart', async (req, res) => {
 
             // DOĞRUDAN ANA LİSTEYİ GÜNCELLİYORUZ
             veritabani.ogrenciler[ogrenciIndex].durum = "YEMEKHANEDE";
+            await ref.child(`ogrenciler/${ogrenciIndex}/durum`).set("YEMEKHANEDE");
 
             veritabani.yemekhaneKayitlari.unshift({
                 ogrenciNo: kisi.ogrenciNo,
@@ -437,6 +438,7 @@ verileriYukle().then(() => {
 }).catch(err => {
     console.error("SUNUCU BAŞLATILAMADI:", err);
 });
+
 
 
 
