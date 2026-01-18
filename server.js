@@ -163,7 +163,6 @@ app.post('/yemekhane-kart', async (req, res) => {
                 k.ogrenciNo.toString() === kisi.ogrenciNo.toString() && 
                 k.tarih === bugun && 
                 k.cikisSaati === "--:--"
-                yeniDurum = "OKULDA";
             );
 
             if (kayit) {
@@ -176,6 +175,7 @@ app.post('/yemekhane-kart', async (req, res) => {
             } else {
                 return res.status(400).json({ basarili: false, mesaj: "Giriş kaydı bulunamadı!" });
             }
+            yeniDurum = "OKULDA";
         } 
         
         // --- GİRİŞ İŞLEMİ ---
@@ -434,6 +434,7 @@ verileriYukle().then(() => {
 }).catch(err => {
     console.error("SUNUCU BAŞLATILAMADI:", err);
 });
+
 
 
 
