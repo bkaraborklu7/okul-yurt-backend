@@ -128,7 +128,8 @@ async function verileriKaydet() {
         console.error(" Veri Kayıt Hatası:", error);
     }
 }
- 
+ app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 // ==================================================================
 //  VERİ ÇEKME (GET) ENDPOINTLERİ
 // ==================================================================
@@ -437,6 +438,7 @@ verileriYukle().then(() => {
 }).catch(err => {
     console.error("SUNUCU BAŞLATILAMADI:", err);
 });
+
 
 
 
